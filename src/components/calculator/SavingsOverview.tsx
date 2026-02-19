@@ -41,7 +41,7 @@ export function SavingsOverview({
         <div className="overview-card">
           <div className="overview-card-icon">💹</div>
           <div className="overview-card-label">Savings Rate</div>
-          <div className="overview-card-value">{currency.symbol}{rate}%</div>
+          <div className="overview-card-value">{rate}%</div>
         </div>
         <div className="overview-card">
           <div className="overview-card-icon">💰</div>

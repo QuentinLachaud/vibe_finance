@@ -25,4 +25,6 @@ export type ThemeMode = 'light' | 'dark';
 export interface NavItem {
   label: string;
   path: string;
+  isGold?: boolean;
+  isSettings?: boolean;
 }

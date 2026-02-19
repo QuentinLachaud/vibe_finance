@@ -1,18 +1,9 @@
 import type { NavItem } from '../types';
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Calculator', path: '/' },
-  { label: 'My Savings', path: '/my-savings' },
-  { label: 'Budget Planner', path: '/budget-planner' },
-  { label: 'Goals', path: '/goals' },
-  { label: 'Settings', path: '/settings' },
-];
-
-export const PAGE_NAV_ITEMS: NavItem[] = [
-  { label: 'Calculator', path: '/' },
-  { label: 'My Savings', path: '/my-savings' },
-  { label: 'Budget Planner', path: '/budget-planner' },
-  { label: 'Goals', path: '/goals' },
-  { label: 'Reports', path: '/reports' },
-  { label: 'Settings', path: '/settings' },
+  { label: 'Savings Calculator', path: '/' },
+  { label: 'Compound Interest Calculator', path: '/compound-interest' },
+  { label: 'Retirement Calculator', path: '/retirement' },
+  { label: 'Portfolio Simulator', path: '/portfolio', isGold: true },
+  { label: 'Settings', path: '/settings', isSettings: true },
 ];

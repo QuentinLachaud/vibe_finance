@@ -19,18 +19,29 @@ export function Header() {
 
         {/* Navigation */}
         <nav className="header-nav">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter((item) => !item.isSettings).map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `nav-link ${isActive ? 'nav-link--active' : ''}`
+                `nav-link ${isActive ? 'nav-link--active' : ''}${item.isGold ? ' nav-link--gold' : ''}`
               }
             >
               {item.label}
             </NavLink>
           ))}
         </nav>
+
+        {/* Settings (gear icon, far right of nav) */}
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `nav-link nav-link--settings ${isActive ? 'nav-link--active' : ''}`
+          }
+          aria-label="Settings"
+        >
+          ⚙️
+        </NavLink>
 
         {/* Right controls */}
         <div className="header-controls">

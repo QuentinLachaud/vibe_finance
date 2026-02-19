@@ -23,7 +23,7 @@ export function IncomeSection() {
             onChange={(val) =>
               dispatch({ type: 'SET_INCOME_FREQUENCY', payload: val })
             }
-            size="sm"
+            size="md"
             ariaLabel="Income frequency toggle"
           />
           <select

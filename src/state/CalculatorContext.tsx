@@ -19,9 +19,9 @@ export interface CalculatorState {
 type Action =
   | { type: 'SET_INCOME'; payload: number }
   | { type: 'SET_INCOME_FREQUENCY'; payload: IncomeFrequency }
-  | { type: 'ADD_EXPENSE'; payload: { name: string; amount: number } }
+  | { type: 'ADD_EXPENSE'; payload: { name: string; amount: number; icon?: string } }
   | { type: 'REMOVE_EXPENSE'; payload: string }
-  | { type: 'UPDATE_EXPENSE'; payload: { id: string; name?: string; amount?: number } };
+  | { type: 'UPDATE_EXPENSE'; payload: { id: string; name?: string; amount?: number; icon?: string } };
 
 function reducer(state: CalculatorState, action: Action): CalculatorState {
   switch (action.type) {
@@ -38,6 +38,7 @@ function reducer(state: CalculatorState, action: Action): CalculatorState {
             id: generateId(),
             name: action.payload.name,
             amount: action.payload.amount,
+            icon: action.payload.icon,
           },
         ],
       };
@@ -60,10 +61,10 @@ function reducer(state: CalculatorState, action: Action): CalculatorState {
 
 // ── Default state ──
 const defaultExpenses: Expense[] = [
-  { id: generateId(), name: 'Housing', amount: 1200 },
-  { id: generateId(), name: 'Groceries', amount: 350 },
-  { id: generateId(), name: 'Transportation', amount: 200 },
-  { id: generateId(), name: 'Dining Out', amount: 150 },
+  { id: generateId(), name: 'Housing', amount: 1200, icon: '🏠' },
+  { id: generateId(), name: 'Groceries', amount: 350, icon: '🛒' },
+  { id: generateId(), name: 'Transportation', amount: 200, icon: '🚌' },
+  { id: generateId(), name: 'Dining Out', amount: 150, icon: '🍽️' },
 ];
 
 const initialState: CalculatorState = {

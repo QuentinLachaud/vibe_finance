@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, NumberInput, TextInput } from '@quentinlachaud/app-component-library';
 import { useCalculator } from '../../state/CalculatorContext';
 import { useCurrency } from '../../state/CurrencyContext';
+import { ConfirmDialog, useConfirmDialog } from './ConfirmDialog';
 
 const CATEGORY_ICONS: Record<string, string> = {
   Housing: '🏠',
@@ -9,6 +10,13 @@ const CATEGORY_ICONS: Record<string, string> = {
   Transportation: '🚌',
   'Dining Out': '🍴',
 };
+
+const EXPENSE_EMOJIS = [
+  '🏠', '🏢', '🧾', '🛒', '🍽️', '☕', '🍔', '🚗', '🚌', '🚕',
+  '⛽', '✈️', '🚆', '🚲', '🧥', '👕', '👟', '💊', '🩺', '🏥',
+  '🎓', '📚', '🎬', '🎮', '🎵', '🏋️', '🏖️', '🐶', '👶', '🎁',
+  '💡', '📱', '💻', '🔧', '🧼', '🧺', '📦', '💼', '🏦', '📋',
+];
 
 function getCategoryIcon(name: string): string {
   return CATEGORY_ICONS[name] ?? '📋';
@@ -19,37 +27,78 @@ export function ExpensesSection() {
   const { currency } = useCurrency();
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState<number>(0);
+  const [newIcon, setNewIcon] = useState('📋');
   const [isAdding, setIsAdding] = useState(false);
+  const [activePickerId, setActivePickerId] = useState<string | null>(null);
+  const [newPickerOpen, setNewPickerOpen] = useState(false);
+  const { pendingId, requestConfirm, cancel, confirm } = useConfirmDialog();
 
-  const handleAdd = () => {
-    if (isAdding) {
-      if (newName.trim() && newAmount > 0) {
-        dispatch({
-          type: 'ADD_EXPENSE',
-          payload: { name: newName.trim(), amount: newAmount },
-        });
-        setNewName('');
-        setNewAmount(0);
-        setIsAdding(false);
-      }
-    } else {
-      setIsAdding(true);
-    }
+  const pendingExpense = pendingId
+    ? state.expenses.find((e) => e.id === pendingId)
+    : null;
+
+  const handleStartAdd = () => {
+    setIsAdding(true);
+    setActivePickerId(null);
   };
 
-  const handleCancelAdd = () => {
-    setIsAdding(false);
-    setNewName('');
-    setNewAmount(0);
-  };
+  useEffect(() => {
+    if (!isAdding) return;
+    if (!newName.trim() || newAmount <= 0) return;
+
+    const timer = setTimeout(() => {
+      dispatch({
+        type: 'ADD_EXPENSE',
+        payload: { name: newName.trim(), amount: newAmount, icon: newIcon },
+      });
+      setNewName('');
+      setNewAmount(0);
+      setNewIcon('📋');
+      setNewPickerOpen(false);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [isAdding, newName, newAmount, dispatch]);
 
   return (
     <div className="expenses-section">
-      <h3 className="expenses-title">Monthly Income</h3>
+      <h3 className="expenses-title">Monthly Expenses</h3>
       <div className="expenses-list">
         {state.expenses.map((expense) => (
           <div key={expense.id} className="expense-row">
-            <span className="expense-icon">{getCategoryIcon(expense.name)}</span>
+            <div className="expense-icon-picker">
+              <button
+                className="expense-icon-btn"
+                onClick={() =>
+                  setActivePickerId((curr) =>
+                    curr === expense.id ? null : expense.id,
+                  )
+                }
+                aria-label={`Change icon for ${expense.name}`}
+              >
+                {expense.icon ?? getCategoryIcon(expense.name)}
+              </button>
+              {activePickerId === expense.id && (
+                <div className="emoji-picker" role="dialog" aria-label="Choose expense icon">
+                  {EXPENSE_EMOJIS.map((emoji) => (
+                    <button
+                      key={`${expense.id}-${emoji}`}
+                      className="emoji-option"
+                      onClick={() => {
+                        dispatch({
+                          type: 'UPDATE_EXPENSE',
+                          payload: { id: expense.id, icon: emoji },
+                        });
+                        setActivePickerId(null);
+                      }}
+                      aria-label={`Set icon ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <span className="expense-name">{expense.name}</span>
             <div className="expense-amount-group">
               <span className="currency-prefix-sm">{currency.symbol}</span>
@@ -68,13 +117,11 @@ export function ExpensesSection() {
               />
             </div>
             <button
-              className="expense-remove"
-              onClick={() =>
-                dispatch({ type: 'REMOVE_EXPENSE', payload: expense.id })
-              }
+              className="expense-delete-btn"
+              onClick={() => requestConfirm(expense.id)}
               aria-label={`Remove ${expense.name}`}
             >
-              ▾
+              🗑️
             </button>
           </div>
         ))}
@@ -82,6 +129,32 @@ export function ExpensesSection() {
 
       {isAdding && (
         <div className="expense-add-form">
+          <div className="expense-icon-picker">
+            <button
+              className="expense-icon-btn"
+              onClick={() => setNewPickerOpen((v) => !v)}
+              aria-label="Choose icon for new expense"
+            >
+              {newIcon}
+            </button>
+            {newPickerOpen && (
+              <div className="emoji-picker" role="dialog" aria-label="Choose new expense icon">
+                {EXPENSE_EMOJIS.map((emoji) => (
+                  <button
+                    key={`new-${emoji}`}
+                    className="emoji-option"
+                    onClick={() => {
+                      setNewIcon(emoji);
+                      setNewPickerOpen(false);
+                    }}
+                    aria-label={`Set new icon ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <TextInput
             placeholder="Category name"
             value={newName}
@@ -100,15 +173,24 @@ export function ExpensesSection() {
               size="sm"
             />
           </div>
-          <button className="expense-cancel-btn" onClick={handleCancelAdd}>
-            ✕
-          </button>
         </div>
       )}
 
-      <Button variant="primary" fullWidth onClick={handleAdd}>
+      <Button variant="primary" fullWidth onClick={handleStartAdd} disabled={isAdding}>
         + Add Expense
       </Button>
+
+      {pendingId && pendingExpense && (
+        <ConfirmDialog
+          message={`Remove "${pendingExpense.name}" expense?`}
+          onCancel={cancel}
+          onConfirm={() =>
+            confirm((id) =>
+              dispatch({ type: 'REMOVE_EXPENSE', payload: id }),
+            )
+          }
+        />
+      )}
     </div>
   );
 }

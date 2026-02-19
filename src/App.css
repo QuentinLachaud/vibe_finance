@@ -346,6 +346,66 @@ body {
   flex-shrink: 0;
 }
 
+.expense-icon-picker {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.expense-icon-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expense-icon-btn:hover {
+  border-color: var(--border-color);
+  background: var(--bg-hover);
+}
+
+.emoji-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 220px;
+  max-height: 180px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  z-index: 20;
+}
+
+.emoji-option {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-option:hover {
+  background: var(--bg-hover);
+}
+
 .expense-name {
   font-size: 14px;
   font-weight: 500;
@@ -360,19 +420,25 @@ body {
   gap: 4px;
 }
 
-.expense-remove {
+/* Hover-only trash delete button on expense rows */
+.expense-delete-btn {
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 14px;
-  padding: 2px 6px;
+  font-size: 16px;
+  padding: 4px 8px;
   border-radius: 4px;
-  transition: color 0.15s, background-color 0.15s;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
 }
 
-.expense-remove:hover {
-  color: var(--text-primary);
+.expense-row:hover .expense-delete-btn {
+  opacity: 1;
+}
+
+.expense-delete-btn:hover {
+  color: #ef4444;
   background-color: var(--bg-hover);
 }
 
@@ -744,5 +810,584 @@ body {
 .income-input-row input {
   font-size: 22px;
   width: 100%;
+}
+
+/* ── Gold Nav Link (Portfolio Simulator) ── */
+.nav-link--gold {
+  color: #d4a017;
+  font-weight: 600;
+}
+
+.nav-link--gold:hover {
+  color: #f5c518;
+}
+
+.nav-link--gold.nav-link--active {
+  color: #d4a017;
+}
+
+/* ── Settings gear icon ── */
+.nav-link--settings {
+  margin-left: auto;
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px 10px;
+}
+
+/* ── Confirm Dialog Overlay ── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-message {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 20px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.confirm-btn {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.confirm-btn--cancel {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.confirm-btn--cancel:hover {
+  background: var(--border-color);
+}
+
+.confirm-btn--remove {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+
+.confirm-btn--remove:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* ── Thicker Add Expense button ── */
+.expenses-section .acl-button {
+  min-height: 48px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ── Bigger income frequency toggle ── */
+.income-header-actions .acl-segmented-toggle {
+  font-size: 14px;
+}
+
+.income-header-actions .acl-segmented-toggle button {
+  padding: 8px 20px;
+  font-size: 14px;
+}
+
+/* ================================================================
+   Compound Interest Calculator
+   ================================================================ */
+
+.ci-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ci-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+@media (max-width: 768px) {
+  .ci-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ci-left,
+.ci-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Card ── */
+.ci-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.ci-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+}
+
+/* ── Fields ── */
+.ci-field {
+  margin-bottom: 16px;
+}
+
+.ci-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.ci-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Currency Input ── */
+.ci-currency-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  flex: 1;
+  transition: border-color 0.15s;
+}
+
+.ci-currency-input:focus-within {
+  border-color: var(--accent-primary);
+}
+
+.ci-currency-prefix {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ci-currency-input input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  width: 100%;
+  outline: none;
+}
+
+/* ── Numeric Input ── */
+.ci-numeric-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  transition: border-color 0.15s;
+}
+
+.ci-numeric-input:focus-within {
+  border-color: var(--accent-primary);
+}
+
+.ci-numeric-input input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  width: 80px;
+  outline: none;
+}
+
+.ci-numeric-suffix {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ── Monthly / Annually Toggle ── */
+.ci-toggle {
+  display: flex;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ci-toggle-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.ci-toggle-btn--active {
+  background-color: var(--accent-primary);
+  color: #0b1120;
+}
+
+/* ── Segmented Buttons (Deposit Increase) ── */
+.ci-segment-group {
+  display: flex;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ci-segment-btn {
+  flex: 1;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.ci-segment-btn + .ci-segment-btn {
+  border-left: 1px solid var(--border-color);
+}
+
+.ci-segment-btn--active {
+  background-color: var(--accent-primary);
+  color: #0b1120;
+}
+
+/* ── Calculate Button ── */
+.ci-calculate-btn {
+  margin-top: 8px;
+}
+
+.ci-calculate-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Detail Cards (below left) ── */
+.ci-detail-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .ci-detail-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ci-detail-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.ci-detail-icon {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+.ci-detail-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.ci-detail-value--green {
+  color: #10b981;
+}
+
+.ci-detail-value--yellow {
+  color: #eab308;
+}
+
+.ci-detail-value--blue {
+  color: #60a5fa;
+}
+
+/* ── animated value (shared) ── */
+.ci-animated-value {
+  font-size: 18px;
+  font-weight: 700;
+  display: block;
+  transition: opacity 0.25s;
+}
+
+/* ── Results Card ── */
+.ci-results-card {
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-alt) 100%);
+}
+
+.ci-results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ci-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ci-result-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ci-result-value--green {
+  color: #10b981;
+  font-size: 22px;
+}
+
+.ci-result-value--yellow {
+  color: #eab308;
+  font-size: 22px;
+}
+
+.ci-result-value--blue {
+  color: #60a5fa;
+  font-size: 20px;
+}
+
+/* ── Chart Card ── */
+.ci-chart-card {
+  min-height: 400px;
+}
+
+.ci-chart-container {
+  width: 100%;
+  height: 320px;
+}
+
+/* ── Tooltip ── */
+.ci-tooltip {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-lg);
+}
+
+.ci-tooltip-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.ci-tooltip-row {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.ci-tooltip-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Collapsible Table ── */
+.ci-table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ci-table-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 24px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.ci-table-toggle:hover {
+  background-color: var(--bg-hover);
+}
+
+.ci-table-arrow {
+  font-size: 12px;
+  transition: transform 0.25s;
+}
+
+.ci-table-arrow--open {
+  transform: rotate(180deg);
+}
+
+.ci-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ci-table-view-toggle {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.ci-toggle-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ci-toggle-btn:not(:last-child) {
+  border-right: 1px solid var(--border-color);
+}
+
+.ci-toggle-btn--active {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+}
+
+.ci-toggle-btn:hover:not(.ci-toggle-btn--active) {
+  background-color: var(--bg-hover);
+}
+
+.ci-table-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+}
+
+.ci-table-body--open {
+  max-height: 600px;
+}
+
+.ci-table-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.ci-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ci-th {
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ci-th--left {
+  text-align: left;
+}
+
+.ci-th--right {
+  text-align: right;
+}
+
+.ci-tr {
+  transition: background-color 0.1s;
+}
+
+.ci-tr:hover {
+  background-color: var(--bg-hover);
+}
+
+.ci-td {
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ci-td--left {
+  text-align: left;
+  font-weight: 600;
+}
+
+.ci-td--right {
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.ci-td--interest {
+  color: #f59e0b;
+}
+
+.ci-td--total {
+  color: var(--accent-primary);
+  font-weight: 700;
 }
 

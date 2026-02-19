@@ -12,7 +12,7 @@ import { ExpensesSection } from '../components/calculator/ExpensesSection';
 import { DonutChart, DonutLegend } from '../components/DonutChart';
 import { SavingsRateCard } from '../components/calculator/SavingsRateCard';
 import { SavingsOverview } from '../components/calculator/SavingsOverview';
-import { PageSubNav } from '../components/PageSubNav';
+// PageSubNav removed – tabs are only in the top header ribbon
 
 const CHART_COLORS = [
   '#3b82f6', // Housing – blue
@@ -66,7 +66,7 @@ export function CalculatorPage() {
         </p>
       </div>
 
-      <PageSubNav />
+
 
       <div className="calculator-grid">
         {/* Left column – inputs */}

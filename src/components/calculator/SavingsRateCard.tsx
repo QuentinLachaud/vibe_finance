@@ -16,7 +16,7 @@ export function SavingsRateCard({
 }: SavingsRateCardProps) {
   return (
     <div className="savings-rate-card">
-      <h2 className="savings-rate-heading">Savings Rate:</h2>
+      <h2 className="savings-rate-heading">Savings Achieved</h2>
       <div className="savings-amount">
         {formatCurrency(monthlySavings, currency.code)}
       </div>
