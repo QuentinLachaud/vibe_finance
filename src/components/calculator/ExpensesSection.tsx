@@ -156,7 +156,7 @@ export function ExpensesSection() {
             )}
           </div>
           <TextInput
-            placeholder="Category name"
+            placeholder="Category"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             size="sm"

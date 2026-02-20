@@ -18,7 +18,8 @@ import {
 } from '../utils/compoundInterest';
 
 // ── Chart colors matching the design system ──
-const COLOR_DEPOSITS = '#7c3aed'; // purple/indigo for deposits (darker blue-purple)
+const COLOR_INITIAL = '#60a5fa'; // blue — matches results panel "Initial Balance"
+const COLOR_DEPOSITS = '#7c3aed'; // purple for additional deposits
 const COLOR_INTEREST = '#f59e0b'; // amber/orange for interest earned
 
 // ── Deposit Increase Options ──
@@ -158,9 +159,12 @@ export function CompoundInterestPage() {
   const [initialInvestment, setInitialInvestment] = useState(10000);
   const [recurringInvestment, setRecurringInvestment] = useState(500);
   const [recurringFrequency, setRecurringFrequency] = useState<'monthly' | 'annually'>('monthly');
+  const [mode, setMode] = useState<'deposit' | 'withdrawal'>('deposit');
   const [annualGrowthRate, setAnnualGrowthRate] = useState(6);
   const [annualDepositIncrease, setAnnualDepositIncrease] = useState(2);
   const [years, setYears] = useState(30);
+
+  const isWithdrawal = mode === 'withdrawal';
 
   // Table state
   const [tableOpen, setTableOpen] = useState(false);
@@ -189,22 +193,38 @@ export function CompoundInterestPage() {
       annualGrowthRate,
       annualDepositIncrease,
       years,
+      mode,
     });
-  }, [initialInvestment, recurringInvestment, recurringFrequency, annualGrowthRate, annualDepositIncrease, years, isValid, calcCounter]);
+  }, [initialInvestment, recurringInvestment, recurringFrequency, annualGrowthRate, annualDepositIncrease, years, mode, isValid, calcCounter]);
 
   const handleCalculate = useCallback(() => {
     setCalcCounter((c) => c + 1);
   }, []);
 
-  // Chart data — Deposits (purple) stacked under Interest (orange)
+  // Chart data — stacked positive segments only
   const chartData = useMemo(() => {
     if (!result) return [];
-    return result.yearByYear.map((d) => ({
-      year: d.year,
-      Deposits: d.deposits,
-      Interest: d.interest,
-    }));
-  }, [result]);
+    return result.yearByYear.map((d) => {
+      if (isWithdrawal) {
+        // Withdrawal mode: totalValue = principal remaining + interest portion
+        // Both segments are positive and stack to totalValue
+        const remainingPrincipal = Math.max(0, result.initialInvestment - d.withdrawals);
+        const interestPortion = d.totalValue - remainingPrincipal;
+        return {
+          year: d.year,
+          'Remaining Balance': Math.max(0, remainingPrincipal),
+          Interest: Math.max(0, interestPortion),
+        };
+      }
+      // Deposit mode: Initial Balance (blue) + Additional Deposits (purple) + Interest (orange)
+      return {
+        year: d.year,
+        'Initial Balance': result.initialInvestment,
+        'Additional Deposits': d.deposits - result.initialInvestment,
+        Interest: d.interest,
+      };
+    });
+  }, [result, isWithdrawal]);
 
   // Table rows — annual or monthly
   const tableRows = useMemo(() => {
@@ -230,6 +250,24 @@ export function CompoundInterestPage() {
           <div className="ci-card">
             <h2 className="ci-card-title">Investment Details</h2>
 
+            {/* Deposit / Withdrawal mode toggle */}
+            <div className="ci-mode-toggle-field">
+              <div className="ci-mode-toggle-group">
+                <button
+                  className={`ci-mode-btn ${!isWithdrawal ? 'ci-mode-btn--active ci-mode-btn--deposit' : ''}`}
+                  onClick={() => setMode('deposit')}
+                >
+                  Deposit
+                </button>
+                <button
+                  className={`ci-mode-btn ${isWithdrawal ? 'ci-mode-btn--active ci-mode-btn--withdrawal' : ''}`}
+                  onClick={() => setMode('withdrawal')}
+                >
+                  Withdrawal
+                </button>
+              </div>
+            </div>
+
             {/* Initial Investment */}
             <div className="ci-field">
               <label className="ci-label">Initial Investment</label>
@@ -241,15 +279,17 @@ export function CompoundInterestPage() {
               />
             </div>
 
-            {/* Recurring Investment */}
+            {/* Recurring Amount + Mode toggle */}
             <div className="ci-field">
-              <label className="ci-label">Recurring Investment</label>
+              <label className="ci-label">
+                {isWithdrawal ? 'Recurring Withdrawal' : 'Recurring Deposit'}
+              </label>
               <div className="ci-row">
                 <CurrencyInput
                   value={recurringInvestment}
                   onChange={setRecurringInvestment}
                   symbol={currency.symbol}
-                  ariaLabel="Recurring investment amount"
+                  ariaLabel={isWithdrawal ? 'Recurring withdrawal amount' : 'Recurring deposit amount'}
                 />
                 <div className="ci-toggle">
                   <button
@@ -281,16 +321,18 @@ export function CompoundInterestPage() {
               />
             </div>
 
-            {/* Increase Annual Deposits */}
+            {/* Increase Annual Amount */}
             <div className="ci-field">
-              <label className="ci-label">Increase Annual Deposits</label>
+              <label className="ci-label">
+                {isWithdrawal ? 'Annual Withdrawal Increase' : 'Annual Deposit Increase'}
+              </label>
               <div className="ci-segment-group">
                 {DEPOSIT_INCREASE_OPTIONS.map((opt) => (
                   <button
                     key={opt}
                     className={`ci-segment-btn ${annualDepositIncrease === opt ? 'ci-segment-btn--active' : ''}`}
                     onClick={() => setAnnualDepositIncrease(opt)}
-                    aria-label={`${opt}% annual deposit increase`}
+                    aria-label={`${opt}% annual ${isWithdrawal ? 'withdrawal' : 'deposit'} increase`}
                   >
                     {opt}%
                   </button>
@@ -341,14 +383,25 @@ export function CompoundInterestPage() {
                   className="ci-detail-value--yellow"
                 />
               </div>
-              <div className="ci-detail-card">
-                <div className="ci-detail-icon">💼</div>
-                <div className="ci-detail-label">Total Deposits</div>
-                <AnimatedValue
-                  value={formatCurrency(result.totalDeposits, currency.code)}
-                  className="ci-detail-value--blue"
-                />
-              </div>
+              {isWithdrawal ? (
+                <div className="ci-detail-card">
+                  <div className="ci-detail-icon">📤</div>
+                  <div className="ci-detail-label">Total Withdrawn</div>
+                  <AnimatedValue
+                    value={formatCurrency(result.totalWithdrawals, currency.code)}
+                    className="ci-detail-value--red"
+                  />
+                </div>
+              ) : (
+                <div className="ci-detail-card">
+                  <div className="ci-detail-icon">💼</div>
+                  <div className="ci-detail-label">Total Deposits</div>
+                  <AnimatedValue
+                    value={formatCurrency(result.totalDeposits, currency.code)}
+                    className="ci-detail-value--purple"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -381,6 +434,23 @@ export function CompoundInterestPage() {
                     className="ci-result-value--blue"
                   />
                 </div>
+                {isWithdrawal ? (
+                  <div className="ci-result-item">
+                    <span className="ci-result-label">Total Withdrawn</span>
+                    <AnimatedValue
+                      value={formatCurrency(result.totalWithdrawals, currency.code)}
+                      className="ci-result-value--red"
+                    />
+                  </div>
+                ) : (
+                  <div className="ci-result-item">
+                    <span className="ci-result-label">Additional Deposits</span>
+                    <AnimatedValue
+                      value={formatCurrency(result.totalDeposits - result.initialInvestment, currency.code)}
+                      className="ci-result-value--purple"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -388,7 +458,9 @@ export function CompoundInterestPage() {
           {/* Stacked Bar Chart */}
           {result && chartData.length > 0 && (
             <div className="ci-card ci-chart-card">
-              <h2 className="ci-card-title">Portfolio Growth</h2>
+              <h2 className="ci-card-title">
+                {isWithdrawal ? 'Portfolio Drawdown' : 'Portfolio Growth'}
+              </h2>
               <div className="ci-chart-container">
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
@@ -421,20 +493,48 @@ export function CompoundInterestPage() {
                     <Legend
                       wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
                     />
-                    <Bar
-                      dataKey="Deposits"
-                      stackId="portfolio"
-                      fill={COLOR_DEPOSITS}
-                      radius={[0, 0, 0, 0]}
-                      animationDuration={800}
-                    />
-                    <Bar
-                      dataKey="Interest"
-                      stackId="portfolio"
-                      fill={COLOR_INTEREST}
-                      radius={[4, 4, 0, 0]}
-                      animationDuration={800}
-                    />
+                    {isWithdrawal ? (
+                      <>
+                        <Bar
+                          dataKey="Remaining Balance"
+                          stackId="portfolio"
+                          fill={COLOR_INITIAL}
+                          radius={[0, 0, 0, 0]}
+                          animationDuration={800}
+                        />
+                        <Bar
+                          dataKey="Interest"
+                          stackId="portfolio"
+                          fill={COLOR_INTEREST}
+                          radius={[4, 4, 0, 0]}
+                          animationDuration={800}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Bar
+                          dataKey="Initial Balance"
+                          stackId="portfolio"
+                          fill={COLOR_INITIAL}
+                          radius={[0, 0, 0, 0]}
+                          animationDuration={800}
+                        />
+                        <Bar
+                          dataKey="Additional Deposits"
+                          stackId="portfolio"
+                          fill={COLOR_DEPOSITS}
+                          radius={[0, 0, 0, 0]}
+                          animationDuration={800}
+                        />
+                        <Bar
+                          dataKey="Interest"
+                          stackId="portfolio"
+                          fill={COLOR_INTEREST}
+                          radius={[4, 4, 0, 0]}
+                          animationDuration={800}
+                        />
+                      </>
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -483,7 +583,9 @@ export function CompoundInterestPage() {
                         <th className="ci-th ci-th--left">
                           {tableView === 'annual' ? 'Year' : 'Month'}
                         </th>
-                        <th className="ci-th ci-th--right">Deposits</th>
+                        <th className="ci-th ci-th--right">
+                          {isWithdrawal ? 'Withdrawn' : 'Deposits'}
+                        </th>
                         <th className="ci-th ci-th--right">Interest</th>
                         <th className="ci-th ci-th--right">Total Value</th>
                       </tr>
@@ -494,7 +596,9 @@ export function CompoundInterestPage() {
                             <tr key={row.year} className="ci-tr">
                               <td className="ci-td ci-td--left">{row.year}</td>
                               <td className="ci-td ci-td--right">
-                                {formatCurrency(row.deposits, currency.code)}
+                                {isWithdrawal
+                                  ? formatCurrency(row.withdrawals, currency.code)
+                                  : formatCurrency(row.deposits, currency.code)}
                               </td>
                               <td className="ci-td ci-td--right ci-td--interest">
                                 {formatCurrency(row.interest, currency.code)}
@@ -510,7 +614,9 @@ export function CompoundInterestPage() {
                                 Y{row.year} M{row.monthInYear}
                               </td>
                               <td className="ci-td ci-td--right">
-                                {formatCurrency(row.deposits, currency.code)}
+                                {isWithdrawal
+                                  ? formatCurrency(row.withdrawals, currency.code)
+                                  : formatCurrency(row.deposits, currency.code)}
                               </td>
                               <td className="ci-td ci-td--right ci-td--interest">
                                 {formatCurrency(row.interest, currency.code)}

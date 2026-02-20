@@ -2,6 +2,7 @@ import { RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
 import { CurrencyProvider } from './state/CurrencyContext';
 import { CalculatorProvider } from './state/CalculatorContext';
+import { AuthProvider } from './state/AuthContext';
 import { router } from './router';
 import './App.css';
 
@@ -10,7 +11,9 @@ function App() {
     <ThemeProvider>
       <CurrencyProvider>
         <CalculatorProvider>
-          <RouterProvider router={router} />
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
         </CalculatorProvider>
       </CurrencyProvider>
     </ThemeProvider>

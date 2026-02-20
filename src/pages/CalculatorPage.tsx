@@ -60,7 +60,7 @@ export function CalculatorPage() {
   return (
     <div className="calculator-page">
       <div className="page-header">
-        <h1 className="page-title">Income, Expenses &amp; Savings Calculator</h1>
+        <h1 className="page-title">Savings Calculator</h1>
         <p className="page-subtitle">
           Calculate your savings rate based on your monthly income and expenses.
         </p>

@@ -11,6 +11,7 @@ const base: CompoundInterestInputs = {
   annualGrowthRate: 6,
   annualDepositIncrease: 0,
   years: 10,
+  mode: 'deposit',
 };
 
 function calc(overrides: Partial<CompoundInterestInputs> = {}) {
@@ -174,5 +175,147 @@ describe('calculateCompoundInterest', () => {
         r.monthByMonth[i - 1].deposits,
       );
     }
+  });
+
+  // ── Result structure ──
+
+  it('result includes initialInvestment pass-through', () => {
+    const r = calc({ initialInvestment: 25_000 });
+    expect(r.initialInvestment).toBe(25_000);
+  });
+
+  it('deposit mode has 0 totalWithdrawals', () => {
+    const r = calc();
+    expect(r.totalWithdrawals).toBe(0);
+  });
+
+  it('yearByYear rows have withdrawals = 0 in deposit mode', () => {
+    const r = calc();
+    r.yearByYear.forEach((row) => {
+      expect(row.withdrawals).toBe(0);
+    });
+  });
+
+  // ── Withdrawal mode ──
+
+  it('withdrawal mode reduces balance over time', () => {
+    const r = calc({
+      initialInvestment: 100_000,
+      recurringInvestment: 1_000,
+      recurringFrequency: 'monthly',
+      mode: 'withdrawal',
+      annualGrowthRate: 4,
+      years: 5,
+    });
+    // Should have withdrawn money
+    expect(r.totalWithdrawals).toBeGreaterThan(0);
+    // Deposits stay at initial
+    expect(r.totalDeposits).toBe(100_000);
+    // Future value should be less than initial (withdrawing 1k/mo > 4% interest on 100k)
+    expect(r.futureValue).toBeLessThan(100_000);
+  });
+
+  it('withdrawal mode: totalWithdrawals tracks cumulative withdrawals', () => {
+    const r = calc({
+      initialInvestment: 50_000,
+      recurringInvestment: 200,
+      recurringFrequency: 'monthly',
+      mode: 'withdrawal',
+      annualGrowthRate: 0,
+      years: 5,
+    });
+    // With 0% growth: should withdraw 200 × 60 = 12,000
+    expect(r.totalWithdrawals).toBe(12_000);
+    expect(r.futureValue).toBe(38_000); // 50k - 12k
+  });
+
+  it('withdrawal mode: balance cannot go below 0', () => {
+    const r = calc({
+      initialInvestment: 1_000,
+      recurringInvestment: 500,
+      recurringFrequency: 'monthly',
+      mode: 'withdrawal',
+      annualGrowthRate: 0,
+      years: 5,
+    });
+    // 1000 / 500 = 2 months to drain, then balance stays 0
+    expect(r.futureValue).toBe(0);
+    // Should have only withdrawn 1000 (the initial amount)
+    expect(r.totalWithdrawals).toBe(1_000);
+  });
+
+  it('withdrawal mode: annual withdrawal works correctly', () => {
+    const r = calc({
+      initialInvestment: 100_000,
+      recurringInvestment: 10_000,
+      recurringFrequency: 'annually',
+      mode: 'withdrawal',
+      annualGrowthRate: 0,
+      years: 5,
+    });
+    // 5 years × 10k = 50k withdrawn, no growth
+    expect(r.totalWithdrawals).toBe(50_000);
+    expect(r.futureValue).toBe(50_000);
+  });
+
+  it('withdrawal with interest: balance lasts longer than without', () => {
+    const noGrowth = calc({
+      initialInvestment: 100_000,
+      recurringInvestment: 1_000,
+      recurringFrequency: 'monthly',
+      mode: 'withdrawal',
+      annualGrowthRate: 0,
+      years: 5,
+    });
+    const withGrowth = calc({
+      initialInvestment: 100_000,
+      recurringInvestment: 1_000,
+      recurringFrequency: 'monthly',
+      mode: 'withdrawal',
+      annualGrowthRate: 6,
+      years: 5,
+    });
+    // With growth, more money remains (1k/mo = 12k/yr < 6% of 100k)
+    expect(withGrowth.futureValue).toBeGreaterThan(noGrowth.futureValue);
+  });
+
+  it('withdrawal escalation increases withdrawal amount each year', () => {
+    const flat = calc({
+      initialInvestment: 100_000,
+      recurringInvestment: 500,
+      recurringFrequency: 'monthly',
+      mode: 'withdrawal',
+      annualDepositIncrease: 0,
+      annualGrowthRate: 0,
+      years: 5,
+    });
+    const escalated = calc({
+      initialInvestment: 100_000,
+      recurringInvestment: 500,
+      recurringFrequency: 'monthly',
+      mode: 'withdrawal',
+      annualDepositIncrease: 5,
+      annualGrowthRate: 0,
+      years: 5,
+    });
+    // Escalated withdrawals take out more money
+    expect(escalated.totalWithdrawals).toBeGreaterThan(flat.totalWithdrawals);
+    expect(escalated.futureValue).toBeLessThan(flat.futureValue);
+  });
+
+  it('withdrawal mode: interest is correctly computed', () => {
+    const r = calc({
+      initialInvestment: 100_000,
+      recurringInvestment: 0,
+      recurringFrequency: 'monthly',
+      mode: 'withdrawal',
+      annualGrowthRate: 6,
+      years: 1,
+    });
+    // No withdrawals, just compounding: same as deposit mode with 0 recurring
+    expect(r.totalWithdrawals).toBe(0);
+    expect(r.totalInterest).toBeGreaterThan(0);
+    // futureValue = deposits - withdrawals + interest
+    expect(Math.abs(r.futureValue - (r.totalDeposits - r.totalWithdrawals + r.totalInterest))).toBeLessThanOrEqual(1);
   });
 });
