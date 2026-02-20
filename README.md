@@ -15,26 +15,14 @@ A modern personal finance web app built with React, TypeScript, and Vite. Track 
 
 ## 📸 Screenshots
 
-### 🖥️ Desktop
-
 #### Savings Calculator
-![Savings Calculator – Desktop](https://github.com/user-attachments/assets/0aa70d77-59a6-44ec-beee-51fe66995dfd)
+![Savings Calculator](https://github.com/user-attachments/assets/0aa70d77-59a6-44ec-beee-51fe66995dfd)
 
 #### Compound Interest Calculator
-![Compound Interest Calculator – Desktop](https://github.com/user-attachments/assets/518fd11a-7315-4bd5-be66-3fa955247061)
+![Compound Interest Calculator](https://github.com/user-attachments/assets/518fd11a-7315-4bd5-be66-3fa955247061)
 
 #### Portfolio Simulator
-![Portfolio Simulator – Desktop](https://github.com/user-attachments/assets/8af4593b-0200-410a-8705-3f2232228efb)
-
----
-
-### 📱 Mobile
-
-#### Savings Calculator
-![Savings Calculator – Mobile](https://github.com/user-attachments/assets/1d36ab36-d871-42b0-9e63-e34c2c101ce1)
-
-#### Compound Interest Calculator
-![Compound Interest Calculator – Mobile](https://github.com/user-attachments/assets/edc481c2-7d74-4fd1-a621-b6027c4eba35)
+![Portfolio Simulator](https://github.com/user-attachments/assets/8af4593b-0200-410a-8705-3f2232228efb)
 
 ---
 
