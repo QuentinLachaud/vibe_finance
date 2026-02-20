@@ -24,6 +24,19 @@ function addMonths(ym: string, months: number): string {
   return `${ny}-${String(nm).padStart(2, '0')}`;
 }
 
+function getDefaultSimulationYears(): number {
+  try {
+    const raw = localStorage.getItem('vibe-finance-sim-default-years');
+    const parsed = Number(raw);
+    if (!Number.isNaN(parsed)) {
+      return Math.min(60, Math.max(5, Math.round(parsed)));
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return 30;
+}
+
 // ── Sub-components ──
 
 function CurrencyInput({
@@ -349,8 +362,8 @@ export function PortfolioSimulatorPage() {
   // Starting conditions
   const [startingBalance, setStartingBalance] = useState(0);
 
-  // Simulation horizon (default 30 years from now)
-  const [simulationEnd, setSimulationEnd] = useState(() => addMonths(currentMonth(), 360));
+  // Simulation horizon (default from settings, 30 years fallback)
+  const [simulationEnd, setSimulationEnd] = useState(() => addMonths(currentMonth(), getDefaultSimulationYears() * 12));
 
   // Scenarios
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
