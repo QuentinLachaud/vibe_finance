@@ -5,14 +5,14 @@ import {
   runSimulation,
   generateId,
   currentMonth,
-  formatMonth,
-  type Scenario,
-  type ScenarioType,
+  type CashFlow,
+  type CashFlowType,
   type SimulationResult,
 } from '../utils/simulationEngine';
-import { ScenarioCard } from '../components/portfolio/ScenarioCard';
+import { CashFlowCard } from '../components/portfolio/CashFlowCard';
 import { MonteCarloChart } from '../components/portfolio/MonteCarloChart';
 import { TimelineView } from '../components/portfolio/TimelineView';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 // ── Helpers ──
 
@@ -35,6 +35,16 @@ function getDefaultSimulationYears(): number {
     // ignore storage errors
   }
   return 30;
+}
+
+// ── Saved Scenario type ──
+
+interface SavedScenario {
+  id: string;
+  name: string;
+  startingBalance: number;
+  simulationEnd: string;
+  cashFlows: CashFlow[];
 }
 
 // ── Sub-components ──
@@ -147,8 +157,9 @@ function MonthInput({
   );
 }
 
-// ── Scenario Form defaults ──
-const DEFAULT_SCENARIOS: Record<ScenarioType, () => Omit<Scenario, 'id'>> = {
+// ── Cash Flow defaults ──
+
+const DEFAULT_CASH_FLOWS: Record<CashFlowType, () => Omit<CashFlow, 'id'>> = {
   'one-off': () => ({
     type: 'one-off',
     label: 'Inheritance',
@@ -179,18 +190,18 @@ const DEFAULT_SCENARIOS: Record<ScenarioType, () => Omit<Scenario, 'id'>> = {
   }),
 };
 
-// ── Scenario Form ──
+// ── Cash Flow Form ──
 
-interface ScenarioFormProps {
-  initial?: Scenario;
+interface CashFlowFormProps {
+  initial?: CashFlow;
   currencySymbol: string;
-  onSave: (scenario: Scenario) => void;
+  onSave: (cashFlow: CashFlow) => void;
   onCancel: () => void;
 }
 
-function ScenarioForm({ initial, currencySymbol, onSave, onCancel }: ScenarioFormProps) {
+function CashFlowForm({ initial, currencySymbol, onSave, onCancel }: CashFlowFormProps) {
   const isEditing = !!initial;
-  const [type, setType] = useState<ScenarioType>(initial?.type ?? 'one-off');
+  const [type, setType] = useState<CashFlowType>(initial?.type ?? 'one-off');
   const [label, setLabel] = useState(initial?.label ?? '');
   const [amount, setAmount] = useState(initial?.amount ?? 50000);
   const [growthRate, setGrowthRate] = useState(initial?.growthRate ?? 5);
@@ -201,7 +212,7 @@ function ScenarioForm({ initial, currencySymbol, onSave, onCancel }: ScenarioFor
   // When type changes and we're not editing, apply defaults
   useEffect(() => {
     if (!isEditing) {
-      const defaults = DEFAULT_SCENARIOS[type]();
+      const defaults = DEFAULT_CASH_FLOWS[type]();
       setLabel(defaults.label);
       setAmount(defaults.amount);
       setGrowthRate(defaults.growthRate);
@@ -217,7 +228,7 @@ function ScenarioForm({ initial, currencySymbol, onSave, onCancel }: ScenarioFor
     onSave({
       id: initial?.id ?? generateId(),
       type,
-      label: label || DEFAULT_SCENARIOS[type]().label,
+      label: label || DEFAULT_CASH_FLOWS[type]().label,
       amount,
       growthRate,
       startDate,
@@ -230,7 +241,7 @@ function ScenarioForm({ initial, currencySymbol, onSave, onCancel }: ScenarioFor
   return (
     <div className="ps-scenario-form">
       <h3 className="ps-form-title">
-        {isEditing ? 'Edit Scenario' : 'New Scenario'}
+        {isEditing ? 'Edit Cash Flow' : 'New Cash Flow'}
       </h3>
 
       {/* Type selector */}
@@ -269,7 +280,7 @@ function ScenarioForm({ initial, currencySymbol, onSave, onCancel }: ScenarioFor
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="e.g. Inheritance, Pension, Salary..."
-          aria-label="Scenario label"
+          aria-label="Cash flow label"
         />
       </div>
 
@@ -282,7 +293,7 @@ function ScenarioForm({ initial, currencySymbol, onSave, onCancel }: ScenarioFor
           value={amount}
           onChange={setAmount}
           symbol={currencySymbol}
-          ariaLabel="Scenario amount"
+          ariaLabel="Cash flow amount"
         />
       </div>
 
@@ -347,7 +358,7 @@ function ScenarioForm({ initial, currencySymbol, onSave, onCancel }: ScenarioFor
           Cancel
         </button>
         <button className="ps-btn ps-btn--primary" onClick={handleSubmit}>
-          {isEditing ? 'Save Changes' : 'Add Scenario'}
+          {isEditing ? 'Save Changes' : 'Add Cash Flow'}
         </button>
       </div>
     </div>
@@ -359,85 +370,155 @@ function ScenarioForm({ initial, currencySymbol, onSave, onCancel }: ScenarioFor
 export function PortfolioSimulatorPage() {
   const { currency } = useCurrency();
 
-  // Starting conditions
-  const [startingBalance, setStartingBalance] = useState(0);
+  // ── Persisted working state ──
+  const [startingBalance, setStartingBalance] = usePersistedState<number>('vf-ps-balance', 0);
+  const [simulationEnd, setSimulationEnd] = usePersistedState<string>(
+    'vf-ps-sim-end',
+    () => addMonths(currentMonth(), getDefaultSimulationYears() * 12),
+  );
+  const [cashFlows, setCashFlows] = usePersistedState<CashFlow[]>('vf-ps-cash-flows', []);
 
-  // Simulation horizon (default from settings, 30 years fallback)
-  const [simulationEnd, setSimulationEnd] = useState(() => addMonths(currentMonth(), getDefaultSimulationYears() * 12));
+  // ── Persisted scenario management ──
+  const [savedScenarios, setSavedScenarios] = usePersistedState<SavedScenario[]>('vf-ps-scenarios', []);
+  const [activeScenarioId, setActiveScenarioId] = usePersistedState<string | null>('vf-ps-active-id', null);
 
-  // Scenarios
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-
-  // Scenario filter (UI only — does not affect simulation)
-  const [scenarioFilter, setScenarioFilter] = useState<'all' | 'deposits' | 'withdrawals'>('all');
-
-  // Simulation config
+  // ── UI state (not persisted) ──
+  const [cashFlowFilter, setCashFlowFilter] = useState<'all' | 'deposits' | 'withdrawals'>('all');
   const [volatility] = useState(12);
   const numPaths = 500;
-
-  // Form state
   const [showForm, setShowForm] = useState(false);
-  const [editingScenario, setEditingScenario] = useState<Scenario | null>(null);
-
-  // Table state
+  const [editingCashFlow, setEditingCashFlow] = useState<CashFlow | null>(null);
   const [tableOpen, setTableOpen] = useState(false);
+  const [showSaveAs, setShowSaveAs] = useState(false);
+  const [saveAsName, setSaveAsName] = useState('');
 
-  // Running simulation
+  // ── Derived ──
+  const activeScenario = savedScenarios.find((s) => s.id === activeScenarioId) ?? null;
+
+  const isDirty = useMemo(() => {
+    if (!activeScenario) return cashFlows.length > 0 || startingBalance > 0;
+    return (
+      activeScenario.startingBalance !== startingBalance ||
+      activeScenario.simulationEnd !== simulationEnd ||
+      JSON.stringify(activeScenario.cashFlows) !== JSON.stringify(cashFlows)
+    );
+  }, [activeScenario, startingBalance, simulationEnd, cashFlows]);
+
+  // ── Simulation ──
   const result: SimulationResult | null = useMemo(() => {
-    if (scenarios.length === 0 && startingBalance === 0) return null;
+    if (cashFlows.length === 0 && startingBalance === 0) return null;
     return runSimulation({
       startingBalance,
-      scenarios,
+      cashFlows,
       volatility,
       numPaths,
       endOverride: simulationEnd,
     });
-  }, [startingBalance, scenarios, volatility, numPaths, simulationEnd]);
+  }, [startingBalance, cashFlows, volatility, numPaths, simulationEnd]);
 
-  const handleAddScenario = useCallback(() => {
-    setEditingScenario(null);
+  // ── Scenario handlers ──
+  const handleSaveAs = useCallback(
+    (name: string) => {
+      const newScenario: SavedScenario = {
+        id: generateId(),
+        name,
+        startingBalance,
+        simulationEnd,
+        cashFlows: [...cashFlows],
+      };
+      setSavedScenarios((prev) => [...prev, newScenario]);
+      setActiveScenarioId(newScenario.id);
+    },
+    [startingBalance, simulationEnd, cashFlows, setSavedScenarios, setActiveScenarioId],
+  );
+
+  const handleSave = useCallback(() => {
+    if (!activeScenarioId) return;
+    setSavedScenarios((prev) =>
+      prev.map((s) =>
+        s.id === activeScenarioId
+          ? { ...s, startingBalance, simulationEnd, cashFlows: [...cashFlows] }
+          : s,
+      ),
+    );
+  }, [activeScenarioId, startingBalance, simulationEnd, cashFlows, setSavedScenarios]);
+
+  const handleLoadScenario = useCallback(
+    (id: string) => {
+      const scenario = savedScenarios.find((s) => s.id === id);
+      if (!scenario) return;
+      setActiveScenarioId(id);
+      setStartingBalance(scenario.startingBalance);
+      setSimulationEnd(scenario.simulationEnd);
+      setCashFlows(scenario.cashFlows);
+    },
+    [savedScenarios, setActiveScenarioId, setStartingBalance, setSimulationEnd, setCashFlows],
+  );
+
+  const handleNewScenario = useCallback(() => {
+    setActiveScenarioId(null);
+    setStartingBalance(0);
+    setSimulationEnd(addMonths(currentMonth(), getDefaultSimulationYears() * 12));
+    setCashFlows([]);
+    setShowForm(false);
+    setEditingCashFlow(null);
+  }, [setActiveScenarioId, setStartingBalance, setSimulationEnd, setCashFlows]);
+
+  const handleDeleteScenario = useCallback(
+    (id: string) => {
+      setSavedScenarios((prev) => prev.filter((s) => s.id !== id));
+      if (activeScenarioId === id) {
+        handleNewScenario();
+      }
+    },
+    [activeScenarioId, setSavedScenarios, handleNewScenario],
+  );
+
+  // ── Cash flow handlers ──
+  const handleAddCashFlow = useCallback(() => {
+    setEditingCashFlow(null);
     setShowForm(true);
   }, []);
 
-  const handleEditScenario = useCallback(
+  const handleEditCashFlow = useCallback(
     (id: string) => {
-      const s = scenarios.find((s) => s.id === id);
-      if (s) {
-        setEditingScenario(s);
+      const cf = cashFlows.find((c) => c.id === id);
+      if (cf) {
+        setEditingCashFlow(cf);
         setShowForm(true);
       }
     },
-    [scenarios],
+    [cashFlows],
   );
 
-  const handleDeleteScenario = useCallback((id: string) => {
-    setScenarios((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+  const handleDeleteCashFlow = useCallback((id: string) => {
+    setCashFlows((prev) => prev.filter((c) => c.id !== id));
+  }, [setCashFlows]);
 
-  const handleToggleScenario = useCallback((id: string) => {
-    setScenarios((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
+  const handleToggleCashFlow = useCallback((id: string) => {
+    setCashFlows((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c)),
     );
-  }, []);
+  }, [setCashFlows]);
 
-  const handleSaveScenario = useCallback(
-    (scenario: Scenario) => {
-      if (editingScenario) {
-        setScenarios((prev) =>
-          prev.map((s) => (s.id === scenario.id ? scenario : s)),
+  const handleSaveCashFlow = useCallback(
+    (cashFlow: CashFlow) => {
+      if (editingCashFlow) {
+        setCashFlows((prev) =>
+          prev.map((c) => (c.id === cashFlow.id ? cashFlow : c)),
         );
       } else {
-        setScenarios((prev) => [...prev, scenario]);
+        setCashFlows((prev) => [...prev, cashFlow]);
       }
       setShowForm(false);
-      setEditingScenario(null);
+      setEditingCashFlow(null);
     },
-    [editingScenario],
+    [editingCashFlow, setCashFlows],
   );
 
   const handleCancelForm = useCallback(() => {
     setShowForm(false);
-    setEditingScenario(null);
+    setEditingCashFlow(null);
   }, []);
 
   return (
@@ -453,7 +534,103 @@ export function PortfolioSimulatorPage() {
       <div className="ps-grid">
         {/* ════════ LEFT COLUMN ════════ */}
         <div className="ps-left">
-          {/* Starting Conditions */}
+          {/* ── Scenario Manager ── */}
+          <div className="ps-card ps-scn-card">
+            <div className="ps-scn-header">
+              <h2 className="ps-card-title">📋 Scenario</h2>
+              {activeScenario && !isDirty && (
+                <span className="ps-scn-badge ps-scn-badge--saved">Saved</span>
+              )}
+              {isDirty && (
+                <span className="ps-scn-badge ps-scn-badge--dirty">Unsaved</span>
+              )}
+            </div>
+
+            {savedScenarios.length > 0 && (
+              <select
+                className="ps-scn-select"
+                value={activeScenarioId ?? ''}
+                onChange={(e) =>
+                  e.target.value
+                    ? handleLoadScenario(e.target.value)
+                    : handleNewScenario()
+                }
+              >
+                <option value="">— New scenario —</option>
+                {savedScenarios.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Save As inline row */}
+            {showSaveAs ? (
+              <div className="ps-scn-save-row">
+                <input
+                  className="ps-text-input"
+                  placeholder="Scenario name…"
+                  value={saveAsName}
+                  onChange={(e) => setSaveAsName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && saveAsName.trim()) {
+                      handleSaveAs(saveAsName.trim());
+                      setShowSaveAs(false);
+                    }
+                    if (e.key === 'Escape') setShowSaveAs(false);
+                  }}
+                  autoFocus
+                />
+                <button
+                  className="ps-btn ps-btn--primary"
+                  disabled={!saveAsName.trim()}
+                  onClick={() => {
+                    handleSaveAs(saveAsName.trim());
+                    setShowSaveAs(false);
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  className="ps-btn ps-btn--secondary"
+                  onClick={() => setShowSaveAs(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="ps-scn-actions">
+                {activeScenarioId && isDirty && (
+                  <button className="ps-btn ps-btn--primary" onClick={handleSave}>
+                    💾 Save
+                  </button>
+                )}
+                <button
+                  className="ps-btn ps-btn--secondary"
+                  onClick={() => {
+                    setShowSaveAs(true);
+                    setSaveAsName(activeScenario?.name ? `${activeScenario.name} copy` : '');
+                  }}
+                >
+                  Save as…
+                </button>
+                <button className="ps-btn ps-btn--secondary" onClick={handleNewScenario}>
+                  + New
+                </button>
+                {activeScenarioId && (
+                  <button
+                    className="ps-btn ps-btn--secondary ps-btn--danger"
+                    onClick={() => handleDeleteScenario(activeScenarioId)}
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Starting Conditions ── */}
           <div className="ps-card">
             <h2 className="ps-card-title">Starting Conditions</h2>
 
@@ -478,30 +655,30 @@ export function PortfolioSimulatorPage() {
 
             <button
               className="ps-btn ps-btn--gold ps-btn--full"
-              onClick={handleAddScenario}
+              onClick={handleAddCashFlow}
             >
-              + Add Scenario
+              + Add Cash Flow
             </button>
           </div>
 
-          {/* Scenario Form */}
+          {/* Cash Flow Form */}
           {showForm && (
             <div className="ps-card ps-card--form">
-              <ScenarioForm
-                initial={editingScenario ?? undefined}
+              <CashFlowForm
+                initial={editingCashFlow ?? undefined}
                 currencySymbol={currency.symbol}
-                onSave={handleSaveScenario}
+                onSave={handleSaveCashFlow}
                 onCancel={handleCancelForm}
               />
             </div>
           )}
 
-          {/* Scenario List */}
-          {scenarios.length > 0 && (
+          {/* Cash Flow List */}
+          {cashFlows.length > 0 && (
             <div className="ps-card">
               <h2 className="ps-card-title">
-                Scenarios
-                <span className="ps-scenario-count">{scenarios.length}</span>
+                Cash Flows
+                <span className="ps-scenario-count">{cashFlows.length}</span>
               </h2>
 
               {/* Filter pills */}
@@ -509,8 +686,8 @@ export function PortfolioSimulatorPage() {
                 {(['all', 'deposits', 'withdrawals'] as const).map((f) => (
                   <button
                     key={f}
-                    className={`ps-filter-btn ${scenarioFilter === f ? 'ps-filter-btn--active' : ''}`}
-                    onClick={() => setScenarioFilter(f)}
+                    className={`ps-filter-btn ${cashFlowFilter === f ? 'ps-filter-btn--active' : ''}`}
+                    onClick={() => setCashFlowFilter(f)}
                   >
                     {f === 'all' ? 'All' : f === 'deposits' ? '📥 Deposits' : '📤 Withdrawals'}
                   </button>
@@ -518,20 +695,20 @@ export function PortfolioSimulatorPage() {
               </div>
 
               <div className="ps-scenario-list">
-                {scenarios
-                  .filter((s) => {
-                    if (scenarioFilter === 'all') return true;
-                    if (scenarioFilter === 'deposits') return s.type !== 'recurring-withdrawal';
-                    return s.type === 'recurring-withdrawal';
+                {cashFlows
+                  .filter((cf) => {
+                    if (cashFlowFilter === 'all') return true;
+                    if (cashFlowFilter === 'deposits') return cf.type !== 'recurring-withdrawal';
+                    return cf.type === 'recurring-withdrawal';
                   })
-                  .map((s) => (
-                    <ScenarioCard
-                      key={s.id}
-                      scenario={s}
+                  .map((cf) => (
+                    <CashFlowCard
+                      key={cf.id}
+                      cashFlow={cf}
                       currencyCode={currency.code}
-                      onEdit={handleEditScenario}
-                      onDelete={handleDeleteScenario}
-                      onToggle={handleToggleScenario}
+                      onEdit={handleEditCashFlow}
+                      onDelete={handleDeleteCashFlow}
+                      onToggle={handleToggleCashFlow}
                     />
                   ))}
               </div>
@@ -580,9 +757,9 @@ export function PortfolioSimulatorPage() {
           )}
 
           {/* Timeline (collapsed by default) */}
-          {scenarios.length > 0 && (
+          {cashFlows.length > 0 && (
             <TimelineView
-              scenarios={scenarios}
+              cashFlows={cashFlows}
               simulationEnd={simulationEnd}
               currencyCode={currency.code}
             />
@@ -641,7 +818,7 @@ export function PortfolioSimulatorPage() {
               <div className="ps-empty-icon">📊</div>
               <h2 className="ps-empty-title">No Simulation Yet</h2>
               <p className="ps-empty-text">
-                Add a starting balance and some scenarios to see your Monte Carlo simulation.
+                Add a starting balance and some cash flows to see your Monte Carlo simulation.
               </p>
             </div>
           )}

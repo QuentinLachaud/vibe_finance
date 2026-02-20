@@ -2,11 +2,11 @@
 
 // ── Types ──
 
-export type ScenarioType = 'one-off' | 'recurring-deposit' | 'recurring-withdrawal';
+export type CashFlowType = 'one-off' | 'recurring-deposit' | 'recurring-withdrawal';
 
-export interface Scenario {
+export interface CashFlow {
   id: string;
-  type: ScenarioType;
+  type: CashFlowType;
   label: string;
   amount: number;
   /** Annual growth rate as percentage (e.g. 6 = 6%) */
@@ -17,13 +17,13 @@ export interface Scenario {
   endDate?: string; // "YYYY-MM"
   /** For recurring: 'monthly' | 'annually' */
   frequency?: 'monthly' | 'annually';
-  /** Whether this scenario is included in the simulation. */
+  /** Whether this cash flow is included in the simulation. */
   enabled: boolean;
 }
 
 export interface SimulationInputs {
   startingBalance: number;
-  scenarios: Scenario[];
+  cashFlows: CashFlow[];
   /** Annual volatility as percentage (e.g. 12 = 12%). Default 12. */
   volatility: number;
   /** Number of simulation paths. Default 500. */
@@ -91,11 +91,11 @@ function percentile(sorted: number[], p: number): number {
 // ── Simulation ──
 
 /**
- * Determine the simulation time range from scenarios.
- * Start: earliest scenario date (or today if none).
- * End: latest scenario end date (or start + 30 years).
+ * Determine the simulation time range from cash flows.
+ * Start: earliest cash flow date (or today if none).
+ * End: latest cash flow end date (or start + 30 years).
  */
-function getSimulationRange(scenarios: Scenario[], endOverride?: string): {
+function getSimulationRange(cashFlows: CashFlow[], endOverride?: string): {
   startAbs: number;
   endAbs: number;
 } {
@@ -105,12 +105,12 @@ function getSimulationRange(scenarios: Scenario[], endOverride?: string): {
   let startAbs = currentAbs;
   let endAbs = currentAbs + 30 * 12; // default 30 years
 
-  if (scenarios.length > 0) {
-    const starts = scenarios.map((s) => {
+  if (cashFlows.length > 0) {
+    const starts = cashFlows.map((s) => {
       const p = parseYM(s.startDate);
       return toAbsMonth(p.year, p.month);
     });
-    const ends = scenarios
+    const ends = cashFlows
       .filter((s) => s.endDate)
       .map((s) => {
         const p = parseYM(s.endDate!);
@@ -122,7 +122,7 @@ function getSimulationRange(scenarios: Scenario[], endOverride?: string): {
       endAbs = Math.max(endAbs, ...ends);
     }
     // Also ensure we cover at least 1 year past all one-off events
-    const oneOffs = scenarios
+    const oneOffs = cashFlows
       .filter((s) => s.type === 'one-off')
       .map((s) => {
         const p = parseYM(s.startDate);
@@ -143,13 +143,13 @@ function getSimulationRange(scenarios: Scenario[], endOverride?: string): {
 }
 
 /**
- * For a given month (absolute), compute net cash flow from all scenarios.
+ * For a given month (absolute), compute net cash flow from all cash flows.
  * Returns the sum of deposits/withdrawals applying that month.
  */
-function monthlyCashFlow(absMonth: number, scenarios: Scenario[]): number {
+function monthlyCashFlowAt(absMonth: number, cashFlows: CashFlow[]): number {
   let flow = 0;
 
-  for (const s of scenarios) {
+  for (const s of cashFlows) {
     const sStart = parseYM(s.startDate);
     const sStartAbs = toAbsMonth(sStart.year, sStart.month);
 
@@ -183,18 +183,18 @@ function monthlyCashFlow(absMonth: number, scenarios: Scenario[]): number {
 }
 
 /**
- * Blend the growth rate based on active scenarios at a given month.
+ * Blend the growth rate based on active cash flows at a given month.
  * Weighted average by absolute value of their amounts.
  */
 function blendedMonthlyReturn(
   absMonth: number,
-  scenarios: Scenario[],
+  cashFlows: CashFlow[],
   defaultAnnualGrowth: number,
 ): number {
   let totalWeight = 0;
   let weightedGrowth = 0;
 
-  for (const s of scenarios) {
+  for (const s of cashFlows) {
     const sStart = parseYM(s.startDate);
     const sStartAbs = toAbsMonth(sStart.year, sStart.month);
 
@@ -225,11 +225,11 @@ function blendedMonthlyReturn(
  * Run Monte Carlo simulation.
  */
 export function runSimulation(inputs: SimulationInputs): SimulationResult {
-  const { startingBalance, scenarios: allScenarios, volatility, numPaths, endOverride } = inputs;
-  const scenarios = allScenarios.filter(s => s.enabled);
+  const { startingBalance, cashFlows: allCashFlows, volatility, numPaths, endOverride } = inputs;
+  const cashFlows = allCashFlows.filter(s => s.enabled);
   const monthlyVol = volatility / 100 / Math.sqrt(12);
 
-  const { startAbs, endAbs } = getSimulationRange(scenarios, endOverride);
+  const { startAbs, endAbs } = getSimulationRange(cashFlows, endOverride);
   const totalMonths = endAbs - startAbs;
 
   if (totalMonths <= 0) {
@@ -250,8 +250,8 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
 
     for (let m = 1; m <= totalMonths; m++) {
       const absMonth = startAbs + m;
-      const cashFlow = monthlyCashFlow(absMonth, scenarios);
-      const monthlyReturn = blendedMonthlyReturn(absMonth, scenarios, 6);
+      const cashFlow = monthlyCashFlowAt(absMonth, cashFlows);
+      const monthlyReturn = blendedMonthlyReturn(absMonth, cashFlows, 6);
       const randomReturn = monthlyReturn + monthlyVol * randn();
 
       let value = path[m - 1] * (1 + randomReturn) + cashFlow;

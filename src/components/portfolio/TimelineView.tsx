@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { formatCurrency } from '../../utils/currency';
-import { currentMonth, type Scenario } from '../../utils/simulationEngine';
+import { currentMonth, type CashFlow } from '../../utils/simulationEngine';
 import type { CurrencyCode } from '../../types';
 
 interface TimelineViewProps {
-  scenarios: Scenario[];
+  cashFlows: CashFlow[];
   simulationEnd: string;
   currencyCode: CurrencyCode;
 }
@@ -37,10 +37,10 @@ const TYPE_INFO = {
   'recurring-withdrawal': { sign: '−', colorClass: 'ps-tl-bar--outflow' },
 } as const;
 
-export function TimelineView({ scenarios, simulationEnd, currencyCode }: TimelineViewProps) {
+export function TimelineView({ cashFlows, simulationEnd, currencyCode }: TimelineViewProps) {
   const [open, setOpen] = useState(false);
 
-  if (scenarios.length === 0) return null;
+  if (cashFlows.length === 0) return null;
 
   const now = currentMonth();
   const rangeStart = toYearDecimal(now);
@@ -50,7 +50,7 @@ export function TimelineView({ scenarios, simulationEnd, currencyCode }: Timelin
   const axisYears = getAxisYears(Math.floor(rangeStart), Math.ceil(rangeEnd));
 
   // Sort: inflows first (one-off, deposits), then outflows
-  const sorted = [...scenarios].sort((a, b) => {
+  const sorted = [...cashFlows].sort((a, b) => {
     const order = { 'one-off': 0, 'recurring-deposit': 1, 'recurring-withdrawal': 2 };
     return order[a.type] - order[b.type];
   });

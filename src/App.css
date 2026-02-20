@@ -1656,6 +1656,91 @@ body {
   border-radius: 10px;
 }
 
+/* ── Scenario Manager Card ── */
+.ps-scn-card {
+  border-color: var(--accent-primary);
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.06) 0%,
+    var(--bg-card) 60%
+  );
+}
+
+.ps-scn-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ps-scn-header .ps-card-title {
+  margin-bottom: 0;
+}
+
+.ps-scn-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 10px;
+}
+
+.ps-scn-badge--saved {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.ps-scn-badge--dirty {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.ps-scn-select {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: border-color 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.ps-scn-select:focus {
+  border-color: var(--accent-primary);
+  outline: none;
+}
+
+.ps-scn-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ps-scn-save-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ps-scn-save-row .ps-text-input {
+  flex: 1;
+}
+
+.ps-btn--danger {
+  color: #ef4444 !important;
+}
+
+.ps-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
 /* ── Fields ── */
 .ps-field {
   margin-bottom: 16px;

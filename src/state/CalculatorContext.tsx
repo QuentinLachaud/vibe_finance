@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useReducer,
+  useEffect,
   type ReactNode,
   type Dispatch,
 } from 'react';
@@ -73,6 +74,24 @@ const initialState: CalculatorState = {
   expenses: defaultExpenses,
 };
 
+// ── Persistence ──
+const CALC_STORAGE_KEY = 'vf-calculator';
+
+function loadInitialState(): CalculatorState {
+  try {
+    const raw = localStorage.getItem(CALC_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.income === 'number' && Array.isArray(parsed.expenses)) {
+        return parsed as CalculatorState;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return initialState;
+}
+
 // ── Context ──
 interface CalculatorContextValue {
   state: CalculatorState;
@@ -82,7 +101,16 @@ interface CalculatorContextValue {
 const CalculatorContext = createContext<CalculatorContextValue | null>(null);
 
 export function CalculatorProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, null, loadInitialState);
+
+  // Persist state on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem(CALC_STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      // ignore
+    }
+  }, [state]);
 
   return (
     <CalculatorContext.Provider value={{ state, dispatch }}>

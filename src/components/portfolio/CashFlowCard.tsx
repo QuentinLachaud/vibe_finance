@@ -1,9 +1,9 @@
 import { formatCurrency } from '../../utils/currency';
-import { formatMonth, type Scenario } from '../../utils/simulationEngine';
+import { formatMonth, type CashFlow } from '../../utils/simulationEngine';
 import type { CurrencyCode } from '../../types';
 
-interface ScenarioCardProps {
-  scenario: Scenario;
+interface CashFlowCardProps {
+  cashFlow: CashFlow;
   currencyCode: CurrencyCode;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -28,25 +28,25 @@ const TYPE_CONFIG = {
   },
 } as const;
 
-export function ScenarioCard({ scenario, currencyCode, onEdit, onDelete, onToggle }: ScenarioCardProps) {
-  const config = TYPE_CONFIG[scenario.type];
-  const isRecurring = scenario.type !== 'one-off';
-  const freqLabel = scenario.frequency === 'annually' ? '/ year' : '/ month';
+export function CashFlowCard({ cashFlow, currencyCode, onEdit, onDelete, onToggle }: CashFlowCardProps) {
+  const config = TYPE_CONFIG[cashFlow.type];
+  const isRecurring = cashFlow.type !== 'one-off';
+  const freqLabel = cashFlow.frequency === 'annually' ? '/ year' : '/ month';
 
   return (
-    <div className={`ps-scenario-card ${config.className} ${!scenario.enabled ? 'ps-scenario-card--disabled' : ''}`}>
+    <div className={`ps-scenario-card ${config.className} ${!cashFlow.enabled ? 'ps-scenario-card--disabled' : ''}`}>
       <div className="ps-scenario-card-actions">
         <button
           className="ps-scenario-action-btn"
-          onClick={() => onEdit(scenario.id)}
-          aria-label="Edit scenario"
+          onClick={() => onEdit(cashFlow.id)}
+          aria-label="Edit cash flow"
         >
           ✏️
         </button>
         <button
           className="ps-scenario-action-btn"
-          onClick={() => onDelete(scenario.id)}
-          aria-label="Delete scenario"
+          onClick={() => onDelete(cashFlow.id)}
+          aria-label="Delete cash flow"
         >
           🗑️
         </button>
@@ -54,34 +54,34 @@ export function ScenarioCard({ scenario, currencyCode, onEdit, onDelete, onToggl
 
       <div className="ps-scenario-card-header">
         <button
-          className={`ps-scenario-toggle ${scenario.enabled ? 'ps-scenario-toggle--on' : ''}`}
-          onClick={() => onToggle(scenario.id)}
-          aria-label={scenario.enabled ? 'Disable scenario' : 'Enable scenario'}
+          className={`ps-scenario-toggle ${cashFlow.enabled ? 'ps-scenario-toggle--on' : ''}`}
+          onClick={() => onToggle(cashFlow.id)}
+          aria-label={cashFlow.enabled ? 'Disable cash flow' : 'Enable cash flow'}
         >
           <div className="ps-scenario-toggle-track" />
           <div className="ps-scenario-toggle-thumb" />
         </button>
         <span className="ps-scenario-icon">{config.icon}</span>
-        <span className="ps-scenario-type">{scenario.label || config.label}</span>
+        <span className="ps-scenario-type">{cashFlow.label || config.label}</span>
       </div>
 
       <div className="ps-scenario-amount">
-        {formatCurrency(scenario.amount, currencyCode)}
+        {formatCurrency(cashFlow.amount, currencyCode)}
         {isRecurring && <span className="ps-scenario-freq"> {freqLabel}</span>}
       </div>
 
       <div className="ps-scenario-dates">
         {isRecurring ? (
           <>
-            {formatMonth(scenario.startDate)} → {scenario.endDate ? formatMonth(scenario.endDate) : '∞'}
+            {formatMonth(cashFlow.startDate)} → {cashFlow.endDate ? formatMonth(cashFlow.endDate) : '∞'}
           </>
         ) : (
-          formatMonth(scenario.startDate)
+          formatMonth(cashFlow.startDate)
         )}
       </div>
 
       <div className="ps-scenario-growth">
-        Growth: {scenario.growthRate}%
+        Growth: {cashFlow.growthRate}%
       </div>
     </div>
   );

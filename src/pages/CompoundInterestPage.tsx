@@ -151,18 +151,61 @@ function AnimatedValue({
   return <span className={`ci-animated-value ${className ?? ''}`}>{display}</span>;
 }
 
+// ── Persistence ──
+const CI_STORAGE_KEY = 'vf-compound-interest';
+
+interface CIPersistedState {
+  initialInvestment: number;
+  recurringInvestment: number;
+  recurringFrequency: 'monthly' | 'annually';
+  mode: 'deposit' | 'withdrawal';
+  annualGrowthRate: number;
+  annualDepositIncrease: number;
+  years: number;
+}
+
+function loadCIState(): Partial<CIPersistedState> {
+  try {
+    const raw = localStorage.getItem(CI_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
 // ── Main Page ──
 export function CompoundInterestPage() {
   const { currency } = useCurrency();
 
+  // Load persisted values (or fallback to defaults)
+  const saved = useMemo(() => loadCIState(), []);
+
   // Inputs
-  const [initialInvestment, setInitialInvestment] = useState(10000);
-  const [recurringInvestment, setRecurringInvestment] = useState(500);
-  const [recurringFrequency, setRecurringFrequency] = useState<'monthly' | 'annually'>('monthly');
-  const [mode, setMode] = useState<'deposit' | 'withdrawal'>('deposit');
-  const [annualGrowthRate, setAnnualGrowthRate] = useState(6);
-  const [annualDepositIncrease, setAnnualDepositIncrease] = useState(2);
-  const [years, setYears] = useState(30);
+  const [initialInvestment, setInitialInvestment] = useState(saved.initialInvestment ?? 10000);
+  const [recurringInvestment, setRecurringInvestment] = useState(saved.recurringInvestment ?? 500);
+  const [recurringFrequency, setRecurringFrequency] = useState<'monthly' | 'annually'>(saved.recurringFrequency ?? 'monthly');
+  const [mode, setMode] = useState<'deposit' | 'withdrawal'>(saved.mode ?? 'deposit');
+  const [annualGrowthRate, setAnnualGrowthRate] = useState(saved.annualGrowthRate ?? 6);
+  const [annualDepositIncrease, setAnnualDepositIncrease] = useState(saved.annualDepositIncrease ?? 2);
+  const [years, setYears] = useState(saved.years ?? 30);
+
+  // Persist all form values
+  useEffect(() => {
+    try {
+      localStorage.setItem(CI_STORAGE_KEY, JSON.stringify({
+        initialInvestment,
+        recurringInvestment,
+        recurringFrequency,
+        mode,
+        annualGrowthRate,
+        annualDepositIncrease,
+        years,
+      }));
+    } catch {
+      // ignore
+    }
+  }, [initialInvestment, recurringInvestment, recurringFrequency, mode, annualGrowthRate, annualDepositIncrease, years]);
 
   const isWithdrawal = mode === 'withdrawal';
 
