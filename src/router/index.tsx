@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../app/AppLayout';
 import { CalculatorPage } from '../pages/CalculatorPage';
 import { CompoundInterestPage } from '../pages/CompoundInterestPage';
+import { TakeHomePayPage } from '../pages/TakeHomePayPage';
 import { NetWorthPage } from '../pages/NetWorthPage';
 import { PortfolioSimulatorPage } from '../pages/PortfolioSimulatorPage';
 import { ReportsPage } from '../pages/ReportsPage';
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <CalculatorPage /> },
       { path: '/compound-interest', element: <CompoundInterestPage /> },
+      { path: '/take-home-pay', element: <TakeHomePayPage /> },
       { path: '/net-worth', element: <NetWorthPage /> },
       { path: '/retirement', element: <Navigate to="/" replace /> },
       { path: '/portfolio', element: <PortfolioSimulatorPage /> },

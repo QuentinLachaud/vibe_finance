@@ -19,19 +19,17 @@ export function SavingsOverview({
   return (
     <div className="savings-overview">
       <div className="savings-overview-header">
-        <div className="savings-overview-icons">
-        </div>
         <div className="savings-overview-rate">
-          <span className="overview-label">Savings Rate:</span>
+          <span className="overview-label">Savings Rate</span>
           <span className="overview-rate-value">{rate}%</span>
         </div>
         <div className="savings-overview-summary">
           <div className="summary-item">
-            <span>{currency.symbol} {income.toLocaleString()}</span>
+            <span>{formatCurrency(income, currency.code)}</span>
             <span className="summary-sublabel">Income</span>
           </div>
           <div className="summary-item">
-            <span>🏠 {formatCurrency(expenses, currency.code)}</span>
+            <span>{formatCurrency(expenses, currency.code)}</span>
             <span className="summary-sublabel">Expenses</span>
           </div>
         </div>

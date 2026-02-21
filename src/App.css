@@ -3658,3 +3658,765 @@ body {
   opacity: 1;
 }
 
+/* Negative value styling */
+.nw-asset-value--neg,
+.nw-total-value--neg,
+.nw-history-value--neg {
+  color: #ef4444;
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — Flip Card
+   ═══════════════════════════════════════════════ */
+
+.nw-flip-container {
+  position: relative;
+  width: 100%;
+  min-height: 380px;
+  perspective: 1200px;
+}
+
+.nw-flip-container > .nw-flip-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nw-flip-face--front {
+  transform: rotateY(0deg);
+}
+
+.nw-flip-face--back {
+  transform: rotateY(180deg);
+}
+
+.nw-flip-container--flipped .nw-flip-face--front {
+  transform: rotateY(-180deg);
+  pointer-events: none;
+}
+
+.nw-flip-container--flipped .nw-flip-face--back {
+  transform: rotateY(0deg);
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — History Popup
+   ═══════════════════════════════════════════════ */
+
+.nw-history-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.nw-history-popup {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+
+.nw-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.nw-history-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.nw-history-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.nw-history-close:hover {
+  color: var(--text-primary);
+}
+
+.nw-history-list {
+  overflow-y: auto;
+  padding: 12px 20px;
+  flex: 1;
+}
+
+.nw-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.nw-history-row:last-child {
+  border-bottom: none;
+}
+
+.nw-history-date {
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 100px;
+}
+
+.nw-history-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+  text-align: right;
+}
+
+.nw-history-del {
+  background: none;
+  border: 1px solid transparent;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.nw-history-del:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.nw-history-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nw-history-confirm-text {
+  font-size: 11px;
+  color: #ef4444;
+  white-space: nowrap;
+}
+
+.nw-history-confirm-yes,
+.nw-history-confirm-no {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.12s;
+}
+
+.nw-history-confirm-yes {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.nw-history-confirm-yes:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.nw-history-confirm-no {
+  color: var(--text-secondary);
+}
+
+.nw-history-confirm-no:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nw-history-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px 0;
+  font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — Donut Breakdown (back face)
+   ═══════════════════════════════════════════════ */
+
+.nw-donut-view {
+  padding: 4px 0 0;
+}
+
+.nw-donut-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.nw-donut-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.nw-donut-toggle {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.nw-donut-toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 5px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nw-donut-toggle-btn:first-child {
+  border-right: 1px solid var(--border-color);
+}
+
+.nw-donut-toggle-btn--active {
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.nw-debt-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.nw-debt-pct {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ef4444;
+}
+
+.nw-debt-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.nw-donut-chart-area {
+  min-height: 280px;
+}
+
+.nw-donut-tooltip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-top: 4px;
+}
+
+.nw-donut-tooltip-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.nw-donut-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+
+.nw-donut-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 8px 0 4px;
+}
+
+.nw-donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.nw-donut-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.nw-donut-legend-label {
+  color: var(--text-secondary);
+}
+
+.nw-donut-legend-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════
+   Take Home Pay Page
+   ═══════════════════════════════════════════════ */
+
+.thp-header {
+  margin-bottom: 24px;
+}
+
+.thp-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.thp-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .thp-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Input card */
+.thp-input-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.thp-row {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.thp-row:last-child {
+  border-bottom: none;
+}
+
+.thp-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* Region toggle */
+.thp-region-toggle {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.thp-region-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.thp-region-btn:first-child {
+  border-right: 1px solid var(--border-color);
+}
+
+.thp-region-btn--active {
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+/* Salary row */
+.thp-salary-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thp-currency {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.thp-salary-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  outline: none;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s;
+}
+
+.thp-salary-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.thp-period-toggle {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.thp-period-btn {
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-right: 1px solid var(--border-color);
+}
+
+.thp-period-btn:last-child {
+  border-right: none;
+}
+
+.thp-period-btn--active {
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* Salary sacrifice */
+.thp-row--sacrifice {
+  padding-bottom: 20px;
+}
+
+.thp-sacrifice-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.thp-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.thp-sacrifice-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.thp-sacrifice-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thp-sacrifice-field-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.thp-sacrifice-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.thp-sacrifice-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 80px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.thp-sacrifice-unit {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.thp-sacrifice-or {
+  font-size: 12px;
+  color: var(--text-muted);
+  align-self: center;
+  margin-bottom: 4px;
+}
+
+/* Result card */
+.thp-result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.thp-result-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 0 0;
+}
+
+.thp-result-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.thp-result-amount {
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--accent-primary);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.thp-result-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+/* KPI row */
+.thp-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.thp-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 8px;
+}
+
+.thp-kpi-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.thp-kpi-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.thp-kpi-value--tax {
+  color: #f59e0b;
+}
+
+.thp-kpi-value--ni {
+  color: #8b5cf6;
+}
+
+.thp-kpi-value--sac {
+  color: #3b82f6;
+}
+
+/* Breakdown toggle */
+.thp-breakdown-toggle {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
+}
+
+.thp-breakdown-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* Breakdown detail */
+.thp-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.thp-breakdown-section {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.thp-breakdown-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.thp-breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 4px 16px;
+}
+
+.thp-breakdown-cell {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 3px 0;
+}
+
+.thp-breakdown-cell--head {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+.thp-breakdown-band {
+  display: contents;
+}
+
+.thp-breakdown-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Summary rows */
+.thp-summary-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thp-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+
+.thp-summary-row--total {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--accent-primary);
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* CTA button */
+.thp-cta {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, var(--accent-primary), #06b6d4);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #000;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.thp-cta:hover {
+  opacity: 0.9;
+}
+
+.thp-cta:active {
+  transform: scale(0.98);
+}
+
+/* ═══════════════════════════════════════════════
+   Savings Calculator — Button Cleanup
+   ═══════════════════════════════════════════════ */
+
+.stat-value--accent {
+  color: var(--accent-primary);
+}
+

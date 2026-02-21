@@ -16,32 +16,29 @@ export function SavingsRateCard({
 }: SavingsRateCardProps) {
   return (
     <div className="savings-rate-card">
-      <h2 className="savings-rate-heading">Savings Achieved</h2>
+      <h2 className="savings-rate-heading">Monthly Savings</h2>
       <div className="savings-amount">
         {formatCurrency(monthlySavings, currency.code)}
       </div>
       <p className="savings-description">
-        You're saving <strong>{formatCurrency(monthlySavings, currency.code)}</strong> per month.
+        That's <strong>{formatCurrency(monthlySavings * 12, currency.code)}</strong> per year — a <strong>{rate}%</strong> savings rate.
       </p>
-      <button className="calculate-btn">Calculate Savings</button>
 
       <div className="savings-stats-row">
-        <div className="stat-item stat-item--savings">
+        <div className="stat-item">
           <span className="stat-icon">💰</span>
-          <span className="stat-label">Savings</span>
+          <span className="stat-label">Annual Savings</span>
           <span className="stat-value">
             {formatCurrency(monthlySavings * 12, currency.code)}
           </span>
         </div>
-        <div className="stat-item stat-item--monthly-savings">
-          <span className="stat-icon stat-icon--green">■</span>
-          <span className="stat-label">Monthly Savings</span>
-          <span className="stat-value">
-            {formatCurrency(monthlySavings, currency.code)}
-          </span>
+        <div className="stat-item">
+          <span className="stat-icon">📊</span>
+          <span className="stat-label">Savings Rate</span>
+          <span className="stat-value stat-value--accent">{rate}%</span>
         </div>
-        <div className="stat-item stat-item--monthly-expenses">
-          <span className="stat-icon stat-icon--blue">■</span>
+        <div className="stat-item">
+          <span className="stat-icon">🏠</span>
           <span className="stat-label">Monthly Expenses</span>
           <span className="stat-value">
             {formatCurrency(monthlyExpenses, currency.code)}
