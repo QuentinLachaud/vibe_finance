@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useCurrency } from '../state/CurrencyContext';
+import { useAuth } from '../state/AuthContext';
 import { formatCurrency } from '../utils/currency';
 import {
   runSimulation,
@@ -12,7 +13,10 @@ import {
 import { CashFlowCard } from '../components/portfolio/CashFlowCard';
 import { MonteCarloChart } from '../components/portfolio/MonteCarloChart';
 import { TimelineView } from '../components/portfolio/TimelineView';
+import { LoginModal } from '../components/LoginModal';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { loadScenarios, saveScenario, removeScenario } from '../services/scenarioService';
+import type { SavedScenario } from '../types';
 
 // ── Helpers ──
 
@@ -37,15 +41,7 @@ function getDefaultSimulationYears(): number {
   return 30;
 }
 
-// ── Saved Scenario type ──
-
-interface SavedScenario {
-  id: string;
-  name: string;
-  startingBalance: number;
-  simulationEnd: string;
-  cashFlows: CashFlow[];
-}
+// SavedScenario is imported from ../types
 
 // ── Sub-components ──
 
@@ -157,39 +153,6 @@ function MonthInput({
   );
 }
 
-// ── Cash Flow defaults ──
-
-const DEFAULT_CASH_FLOWS: Record<CashFlowType, () => Omit<CashFlow, 'id'>> = {
-  'one-off': () => ({
-    type: 'one-off',
-    label: 'Inheritance',
-    amount: 50000,
-    growthRate: 5,
-    startDate: addMonths(currentMonth(), 60),
-    enabled: true,
-  }),
-  'recurring-deposit': () => ({
-    type: 'recurring-deposit',
-    label: 'Monthly Deposit',
-    amount: 1500,
-    growthRate: 6,
-    startDate: currentMonth(),
-    endDate: addMonths(currentMonth(), 180),
-    frequency: 'monthly',
-    enabled: true,
-  }),
-  'recurring-withdrawal': () => ({
-    type: 'recurring-withdrawal',
-    label: 'Monthly Withdrawal',
-    amount: 2000,
-    growthRate: 4,
-    startDate: addMonths(currentMonth(), 120),
-    endDate: addMonths(currentMonth(), 420),
-    frequency: 'monthly',
-    enabled: true,
-  }),
-};
-
 // ── Cash Flow Form ──
 
 interface CashFlowFormProps {
@@ -197,39 +160,108 @@ interface CashFlowFormProps {
   currencySymbol: string;
   onSave: (cashFlow: CashFlow) => void;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  onRegisterSubmit?: (submitFn: (() => void) | null) => void;
 }
 
-function CashFlowForm({ initial, currencySymbol, onSave, onCancel }: CashFlowFormProps) {
+function CashFlowForm({ initial, currencySymbol, onSave, onCancel, onDirtyChange, onRegisterSubmit }: CashFlowFormProps) {
   const isEditing = !!initial;
   const [type, setType] = useState<CashFlowType>(initial?.type ?? 'one-off');
   const [label, setLabel] = useState(initial?.label ?? '');
-  const [amount, setAmount] = useState(initial?.amount ?? 50000);
+  const [amount, setAmount] = useState(initial?.amount ?? 0);
+  const [startingValue, setStartingValue] = useState(initial?.startingValue ?? 0);
   const [growthRate, setGrowthRate] = useState(initial?.growthRate ?? 5);
-  const [startDate, setStartDate] = useState(initial?.startDate ?? addMonths(currentMonth(), 60));
+  const [startDate, setStartDate] = useState(initial?.startDate ?? currentMonth());
   const [endDate, setEndDate] = useState(initial?.endDate ?? addMonths(currentMonth(), 180));
   const [frequency, setFrequency] = useState<'monthly' | 'annually'>(initial?.frequency ?? 'monthly');
 
-  // When type changes and we're not editing, apply defaults
+  // When type changes and we're not editing, reset to blank
   useEffect(() => {
     if (!isEditing) {
-      const defaults = DEFAULT_CASH_FLOWS[type]();
-      setLabel(defaults.label);
-      setAmount(defaults.amount);
-      setGrowthRate(defaults.growthRate);
-      setStartDate(defaults.startDate);
-      if (defaults.endDate) setEndDate(defaults.endDate);
-      if (defaults.frequency) setFrequency(defaults.frequency);
+      setLabel('');
+      setAmount(0);
+      setStartingValue(0);
+      setGrowthRate(5);
+      setStartDate(currentMonth());
+      setEndDate(addMonths(currentMonth(), 180));
+      setFrequency('monthly');
     }
   }, [type, isEditing]);
 
   const isRecurring = type !== 'one-off';
 
+  const baseline = useMemo(() => {
+    if (initial) {
+      return {
+        type: initial.type,
+        label: initial.label ?? '',
+        amount: initial.amount,
+        startingValue: initial.startingValue ?? 0,
+        growthRate: initial.growthRate,
+        startDate: initial.startDate,
+        endDate: initial.endDate ?? addMonths(currentMonth(), 180),
+        frequency: initial.frequency ?? 'monthly',
+      };
+    }
+
+    return {
+      type,
+      label: '',
+      amount: 0,
+      startingValue: 0,
+      growthRate: 5,
+      startDate: currentMonth(),
+      endDate: addMonths(currentMonth(), 180),
+      frequency: 'monthly' as const,
+    };
+  }, [initial, type]);
+
+  const isFormDirty = useMemo(() => {
+    const commonChanged =
+      type !== baseline.type ||
+      label !== baseline.label ||
+      amount !== baseline.amount ||
+      growthRate !== baseline.growthRate ||
+      startDate !== baseline.startDate;
+
+    if (!isRecurring) {
+      return commonChanged;
+    }
+
+    return (
+      commonChanged ||
+      startingValue !== baseline.startingValue ||
+      endDate !== baseline.endDate ||
+      frequency !== baseline.frequency
+    );
+  }, [
+    type,
+    label,
+    amount,
+    growthRate,
+    startDate,
+    isRecurring,
+    startingValue,
+    endDate,
+    frequency,
+    baseline,
+  ]);
+
+  useEffect(() => {
+    onDirtyChange?.(isFormDirty);
+  }, [isFormDirty, onDirtyChange]);
+
+  useEffect(() => () => {
+    onDirtyChange?.(false);
+  }, [onDirtyChange]);
+
   const handleSubmit = () => {
     onSave({
       id: initial?.id ?? generateId(),
       type,
-      label: label || DEFAULT_CASH_FLOWS[type]().label,
+      label: label || (type === 'one-off' ? 'One-off' : type === 'recurring-deposit' ? 'Deposit' : 'Withdrawal'),
       amount,
+      startingValue: isRecurring ? startingValue : undefined,
       growthRate,
       startDate,
       endDate: isRecurring ? endDate : undefined,
@@ -237,6 +269,11 @@ function CashFlowForm({ initial, currencySymbol, onSave, onCancel }: CashFlowFor
       enabled: initial?.enabled ?? true,
     });
   };
+
+  useEffect(() => {
+    onRegisterSubmit?.(handleSubmit);
+    return () => onRegisterSubmit?.(null);
+  }, [onRegisterSubmit, handleSubmit]);
 
   return (
     <div className="ps-scenario-form">
@@ -284,6 +321,21 @@ function CashFlowForm({ initial, currencySymbol, onSave, onCancel }: CashFlowFor
         />
       </div>
 
+      {/* Starting Value / Lump Withdrawal (recurring only, right below label) */}
+      {isRecurring && (
+        <div className="ps-field">
+          <label className="ps-label">
+            {type === 'recurring-withdrawal' ? 'Lump Withdrawal' : 'Starting Value'}
+          </label>
+          <CurrencyInput
+            value={startingValue}
+            onChange={setStartingValue}
+            symbol={currencySymbol}
+            ariaLabel={type === 'recurring-withdrawal' ? 'Lump withdrawal amount' : 'Starting value amount'}
+          />
+        </div>
+      )}
+
       {/* Amount */}
       <div className="ps-field">
         <label className="ps-label">
@@ -297,7 +349,6 @@ function CashFlowForm({ initial, currencySymbol, onSave, onCancel }: CashFlowFor
         />
       </div>
 
-      {/* Frequency (recurring only) */}
       {isRecurring && (
         <div className="ps-field">
           <label className="ps-label">Frequency</label>
@@ -369,9 +420,9 @@ function CashFlowForm({ initial, currencySymbol, onSave, onCancel }: CashFlowFor
 
 export function PortfolioSimulatorPage() {
   const { currency } = useCurrency();
+  const { user } = useAuth();
 
   // ── Persisted working state ──
-  const [startingBalance, setStartingBalance] = usePersistedState<number>('vf-ps-balance', 0);
   const [simulationEnd, setSimulationEnd] = usePersistedState<string>(
     'vf-ps-sim-end',
     () => addMonths(currentMonth(), getDefaultSimulationYears() * 12),
@@ -388,108 +439,171 @@ export function PortfolioSimulatorPage() {
   const numPaths = 500;
   const [showForm, setShowForm] = useState(false);
   const [editingCashFlow, setEditingCashFlow] = useState<CashFlow | null>(null);
+  const [isCashFlowFormDirty, setIsCashFlowFormDirty] = useState(false);
+  const submitCashFlowFormRef = useRef<(() => void) | null>(null);
+  const pendingSwitchRef = useRef<string | null>(null);
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null);
+  const [horizonMode, setHorizonMode] = usePersistedState<'date' | 'years'>('vf-ps-horizon-mode', 'years');
   const [tableOpen, setTableOpen] = useState(false);
   const [showSaveAs, setShowSaveAs] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [scenarioSyncing, setScenarioSyncing] = useState(false);
   const [saveAsName, setSaveAsName] = useState('');
 
   // ── Derived ──
   const activeScenario = savedScenarios.find((s) => s.id === activeScenarioId) ?? null;
 
   const isDirty = useMemo(() => {
-    if (!activeScenario) return cashFlows.length > 0 || startingBalance > 0;
+    if (!activeScenario) return cashFlows.length > 0;
     return (
-      activeScenario.startingBalance !== startingBalance ||
       activeScenario.simulationEnd !== simulationEnd ||
       JSON.stringify(activeScenario.cashFlows) !== JSON.stringify(cashFlows)
     );
-  }, [activeScenario, startingBalance, simulationEnd, cashFlows]);
+  }, [activeScenario, simulationEnd, cashFlows]);
+
+  // ── Firestore sync ──
+  // Load scenarios from Firestore when user logs in
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setScenarioSyncing(true);
+    loadScenarios(user.uid)
+      .then((remote) => {
+        if (cancelled) return;
+        if (remote.length > 0) {
+          setSavedScenarios(remote);
+        }
+      })
+      .catch((err) => console.error('[scenarios] fetch failed:', err))
+      .finally(() => { if (!cancelled) setScenarioSyncing(false); });
+    return () => { cancelled = true; };
+  }, [user, setSavedScenarios]);
 
   // ── Simulation ──
   const result: SimulationResult | null = useMemo(() => {
-    if (cashFlows.length === 0 && startingBalance === 0) return null;
+    if (cashFlows.length === 0) return null;
     return runSimulation({
-      startingBalance,
+      startingBalance: 0,
       cashFlows,
       volatility,
       numPaths,
       endOverride: simulationEnd,
     });
-  }, [startingBalance, cashFlows, volatility, numPaths, simulationEnd]);
+  }, [cashFlows, volatility, numPaths, simulationEnd]);
 
   // ── Scenario handlers ──
   const handleSaveAs = useCallback(
     (name: string) => {
+      if (!user) { setShowLoginModal(true); return; }
       const newScenario: SavedScenario = {
         id: generateId(),
         name,
-        startingBalance,
+        startingBalance: 0,
         simulationEnd,
         cashFlows: [...cashFlows],
       };
       setSavedScenarios((prev) => [...prev, newScenario]);
       setActiveScenarioId(newScenario.id);
+      saveScenario(user.uid, newScenario).catch((e) => console.error('[scenarios] save-as failed:', e));
     },
-    [startingBalance, simulationEnd, cashFlows, setSavedScenarios, setActiveScenarioId],
+    [user, simulationEnd, cashFlows, setSavedScenarios, setActiveScenarioId],
   );
 
   const handleSave = useCallback(() => {
     if (!activeScenarioId) return;
+    if (!user) { setShowLoginModal(true); return; }
+    const updated: SavedScenario = {
+      id: activeScenarioId,
+      name: activeScenario?.name ?? 'Scenario',
+      startingBalance: 0,
+      simulationEnd,
+      cashFlows: [...cashFlows],
+    };
     setSavedScenarios((prev) =>
-      prev.map((s) =>
-        s.id === activeScenarioId
-          ? { ...s, startingBalance, simulationEnd, cashFlows: [...cashFlows] }
-          : s,
-      ),
+      prev.map((s) => (s.id === activeScenarioId ? updated : s)),
     );
-  }, [activeScenarioId, startingBalance, simulationEnd, cashFlows, setSavedScenarios]);
+    saveScenario(user.uid, updated).catch((e) => console.error('[scenarios] save failed:', e));
+  }, [user, activeScenarioId, activeScenario, simulationEnd, cashFlows, setSavedScenarios]);
 
   const handleLoadScenario = useCallback(
     (id: string) => {
       const scenario = savedScenarios.find((s) => s.id === id);
       if (!scenario) return;
       setActiveScenarioId(id);
-      setStartingBalance(scenario.startingBalance);
       setSimulationEnd(scenario.simulationEnd);
       setCashFlows(scenario.cashFlows);
     },
-    [savedScenarios, setActiveScenarioId, setStartingBalance, setSimulationEnd, setCashFlows],
+    [savedScenarios, setActiveScenarioId, setSimulationEnd, setCashFlows],
   );
 
   const handleNewScenario = useCallback(() => {
     setActiveScenarioId(null);
-    setStartingBalance(0);
     setSimulationEnd(addMonths(currentMonth(), getDefaultSimulationYears() * 12));
     setCashFlows([]);
     setShowForm(false);
     setEditingCashFlow(null);
-  }, [setActiveScenarioId, setStartingBalance, setSimulationEnd, setCashFlows]);
+  }, [setActiveScenarioId, setSimulationEnd, setCashFlows]);
 
   const handleDeleteScenario = useCallback(
     (id: string) => {
       setSavedScenarios((prev) => prev.filter((s) => s.id !== id));
+      if (user) {
+        removeScenario(user.uid, id).catch((e) => console.error('[scenarios] delete failed:', e));
+      }
       if (activeScenarioId === id) {
         handleNewScenario();
       }
     },
-    [activeScenarioId, setSavedScenarios, handleNewScenario],
+    [user, activeScenarioId, setSavedScenarios, handleNewScenario],
   );
 
   // ── Cash flow handlers ──
+  const doSwitchTo = useCallback((id: string) => {
+    const cf = cashFlows.find((c) => c.id === id);
+    if (cf) {
+      setIsCashFlowFormDirty(false);
+      setEditingCashFlow(cf);
+      setShowForm(true);
+    }
+  }, [cashFlows]);
+
   const handleAddCashFlow = useCallback(() => {
+    setIsCashFlowFormDirty(false);
     setEditingCashFlow(null);
     setShowForm(true);
   }, []);
 
   const handleEditCashFlow = useCallback(
     (id: string) => {
-      const cf = cashFlows.find((c) => c.id === id);
-      if (cf) {
-        setEditingCashFlow(cf);
-        setShowForm(true);
+      if (showForm && editingCashFlow?.id === id) return;
+
+      // If form is dirty, show the unsaved-changes dialog instead of switching
+      if (showForm && isCashFlowFormDirty) {
+        setPendingEditId(id);
+        return;
       }
+
+      doSwitchTo(id);
     },
-    [cashFlows],
+    [showForm, editingCashFlow, isCashFlowFormDirty, doSwitchTo],
   );
+
+  // Unsaved-changes dialog handlers
+  const handleUnsavedSave = useCallback(() => {
+    pendingSwitchRef.current = pendingEditId;
+    setPendingEditId(null);
+    submitCashFlowFormRef.current?.();
+  }, [pendingEditId]);
+
+  const handleUnsavedDiscard = useCallback(() => {
+    const id = pendingEditId;
+    setPendingEditId(null);
+    if (id) doSwitchTo(id);
+  }, [pendingEditId, doSwitchTo]);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setPendingEditId(null);
+  }, []);
 
   const handleDeleteCashFlow = useCallback((id: string) => {
     setCashFlows((prev) => prev.filter((c) => c.id !== id));
@@ -510,13 +624,27 @@ export function PortfolioSimulatorPage() {
       } else {
         setCashFlows((prev) => [...prev, cashFlow]);
       }
+      setIsCashFlowFormDirty(false);
+
+      // If there's a pending switch from the unsaved-changes dialog, open that item
+      const switchId = pendingSwitchRef.current;
+      if (switchId) {
+        pendingSwitchRef.current = null;
+        const cf = cashFlows.find((c) => c.id === switchId);
+        if (cf) {
+          setEditingCashFlow(cf);
+          return; // Keep form open with new item
+        }
+      }
+
       setShowForm(false);
       setEditingCashFlow(null);
     },
-    [editingCashFlow, setCashFlows],
+    [editingCashFlow, setCashFlows, cashFlows],
   );
 
   const handleCancelForm = useCallback(() => {
+    setIsCashFlowFormDirty(false);
     setShowForm(false);
     setEditingCashFlow(null);
   }, []);
@@ -628,29 +756,64 @@ export function PortfolioSimulatorPage() {
                 )}
               </div>
             )}
+
+            {/* Login prompt when not signed in */}
+            {!user && (
+              <button
+                className="ps-login-prompt"
+                onClick={() => setShowLoginModal(true)}
+              >
+                🔒 Sign in to save scenarios to your account
+              </button>
+            )}
+            {scenarioSyncing && (
+              <div className="ps-sync-indicator">Syncing…</div>
+            )}
           </div>
 
-          {/* ── Starting Conditions ── */}
+          {/* ── Simulation Setup ── */}
           <div className="ps-card">
-            <h2 className="ps-card-title">Starting Conditions</h2>
+            <h2 className="ps-card-title">Simulation Setup</h2>
 
             <div className="ps-field">
-              <label className="ps-label">Starting Portfolio</label>
-              <CurrencyInput
-                value={startingBalance}
-                onChange={setStartingBalance}
-                symbol={currency.symbol}
-                ariaLabel="Starting portfolio balance"
-              />
-            </div>
-
-            <div className="ps-field">
-              <label className="ps-label">Simulation Horizon</label>
-              <MonthInput
-                value={simulationEnd}
-                onChange={setSimulationEnd}
-                ariaLabel="Simulation end date"
-              />
+              <div className="ps-label-row">
+                <label className="ps-label">Horizon</label>
+                <div className="ps-toggle ps-toggle--sm">
+                  <button
+                    className={`ps-toggle-btn ${horizonMode === 'years' ? 'ps-toggle-btn--active' : ''}`}
+                    onClick={() => setHorizonMode('years')}
+                  >
+                    Years
+                  </button>
+                  <button
+                    className={`ps-toggle-btn ${horizonMode === 'date' ? 'ps-toggle-btn--active' : ''}`}
+                    onClick={() => setHorizonMode('date')}
+                  >
+                    Date
+                  </button>
+                </div>
+              </div>
+              {horizonMode === 'years' ? (
+                <NumericInput
+                  value={(() => {
+                    const [ey, em] = simulationEnd.split('-').map(Number);
+                    const now = new Date();
+                    const months = (ey * 12 + em) - (now.getFullYear() * 12 + (now.getMonth() + 1));
+                    return Math.max(1, Math.round(months / 12));
+                  })()}
+                  onChange={(yrs) => setSimulationEnd(addMonths(currentMonth(), Math.round(yrs * 12)))}
+                  suffix="years"
+                  ariaLabel="Simulation horizon in years"
+                  min={1}
+                  max={100}
+                />
+              ) : (
+                <MonthInput
+                  value={simulationEnd}
+                  onChange={setSimulationEnd}
+                  ariaLabel="Simulation end date"
+                />
+              )}
             </div>
 
             <button
@@ -669,6 +832,8 @@ export function PortfolioSimulatorPage() {
                 currencySymbol={currency.symbol}
                 onSave={handleSaveCashFlow}
                 onCancel={handleCancelForm}
+                onDirtyChange={setIsCashFlowFormDirty}
+                onRegisterSubmit={(fn) => { submitCashFlowFormRef.current = fn; }}
               />
             </div>
           )}
@@ -762,6 +927,7 @@ export function PortfolioSimulatorPage() {
               cashFlows={cashFlows}
               simulationEnd={simulationEnd}
               currencyCode={currency.code}
+              onEdit={handleEditCashFlow}
             />
           )}
 
@@ -818,12 +984,35 @@ export function PortfolioSimulatorPage() {
               <div className="ps-empty-icon">📊</div>
               <h2 className="ps-empty-title">No Simulation Yet</h2>
               <p className="ps-empty-text">
-                Add a starting balance and some cash flows to see your Monte Carlo simulation.
+                Add some cash flows to see your Monte Carlo simulation.
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {/* Unsaved Changes Dialog */}
+      {pendingEditId && (
+        <div className="confirm-overlay" onClick={handleUnsavedCancel}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p className="confirm-message">You have unsaved changes</p>
+            <div className="confirm-actions">
+              <button className="confirm-btn confirm-btn--cancel" onClick={handleUnsavedCancel}>
+                Cancel
+              </button>
+              <button className="confirm-btn confirm-btn--discard" onClick={handleUnsavedDiscard}>
+                Discard
+              </button>
+              <button className="confirm-btn confirm-btn--save" onClick={handleUnsavedSave}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Login Modal */}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
     </div>
   );
 }

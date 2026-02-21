@@ -9,6 +9,8 @@ export interface CashFlow {
   type: CashFlowType;
   label: string;
   amount: number;
+  /** For recurring flows: one-time value applied at startDate. */
+  startingValue?: number;
   /** Annual growth rate as percentage (e.g. 6 = 6%) */
   growthRate: number;
   /** For one-off: the exact date. For recurring: start date. */
@@ -166,6 +168,10 @@ function monthlyCashFlowAt(absMonth: number, cashFlows: CashFlow[]): number {
 
     if (absMonth < sStartAbs || absMonth > sEndAbs) continue;
 
+    if (absMonth === sStartAbs && s.startingValue && s.startingValue > 0) {
+      flow += s.type === 'recurring-withdrawal' ? -s.startingValue : s.startingValue;
+    }
+
     if (s.frequency === 'monthly') {
       // Apply every month in range
       flow += s.type === 'recurring-withdrawal' ? -s.amount : s.amount;
@@ -209,8 +215,9 @@ function blendedMonthlyReturn(
     const sEnd = s.endDate ? parseYM(s.endDate) : null;
     const sEndAbs = sEnd ? toAbsMonth(sEnd.year, sEnd.month) : Infinity;
     if (absMonth >= sStartAbs && absMonth <= sEndAbs) {
-      totalWeight += Math.abs(s.amount);
-      weightedGrowth += s.growthRate * Math.abs(s.amount);
+      const recurringWeight = Math.abs(s.amount) + Math.abs(s.startingValue ?? 0);
+      totalWeight += recurringWeight;
+      weightedGrowth += s.growthRate * recurringWeight;
     }
   }
 
@@ -246,7 +253,7 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
 
   for (let p = 0; p < numPaths; p++) {
     const path: number[] = new Array(totalMonths + 1);
-    path[0] = startingBalance;
+    path[0] = Math.max(0, startingBalance + monthlyCashFlowAt(startAbs, cashFlows));
 
     for (let m = 1; m <= totalMonths; m++) {
       const absMonth = startAbs + m;

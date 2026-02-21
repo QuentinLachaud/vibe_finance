@@ -1,5 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 /* ── Read Vite env vars ── */
 const apiKey         = import.meta.env.VITE_FIREBASE_API_KEY         as string | undefined;
@@ -32,11 +33,13 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let googleProvider: GoogleAuthProvider | null = null;
+let db: Firestore | null = null;
 
 if (firebaseEnabled) {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
+    db = getFirestore(app);
     googleProvider = new GoogleAuthProvider();
     googleProvider.addScope('email');
     googleProvider.addScope('profile');
@@ -48,4 +51,4 @@ if (firebaseEnabled) {
   console.warn('[firebase] ⚠️  Firebase disabled — missing env vars');
 }
 
-export { app, auth, googleProvider };
+export { app, auth, googleProvider, db };

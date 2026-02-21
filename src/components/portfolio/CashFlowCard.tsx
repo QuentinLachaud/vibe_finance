@@ -70,6 +70,13 @@ export function CashFlowCard({ cashFlow, currencyCode, onEdit, onDelete, onToggl
         {isRecurring && <span className="ps-scenario-freq"> {freqLabel}</span>}
       </div>
 
+      {isRecurring && (cashFlow.startingValue ?? 0) > 0 && (
+        <div className="ps-scenario-growth">
+          {cashFlow.type === 'recurring-withdrawal' ? 'Lump at start:' : 'Starting value:'}{' '}
+          {formatCurrency(cashFlow.startingValue ?? 0, currencyCode)}
+        </div>
+      )}
+
       <div className="ps-scenario-dates">
         {isRecurring ? (
           <>

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { formatCurrency } from '../../utils/currency';
-import { currentMonth, type CashFlow } from '../../utils/simulationEngine';
+import { currentMonth, formatMonth, type CashFlow } from '../../utils/simulationEngine';
 import type { CurrencyCode } from '../../types';
 
 interface TimelineViewProps {
   cashFlows: CashFlow[];
   simulationEnd: string;
   currencyCode: CurrencyCode;
+  onEdit?: (id: string) => void;
 }
 
 /** Convert "YYYY-MM" to a decimal year (e.g. "2026-06" → 2026.42) */
@@ -37,7 +38,31 @@ const TYPE_INFO = {
   'recurring-withdrawal': { sign: '−', colorClass: 'ps-tl-bar--outflow' },
 } as const;
 
-export function TimelineView({ cashFlows, simulationEnd, currencyCode }: TimelineViewProps) {
+/** Build a compact amount string like "+£1,666/mo" */
+function amountStr(s: CashFlow, currencyCode: CurrencyCode): string {
+  const info = TYPE_INFO[s.type];
+  const freqLabel = s.type === 'one-off' ? '' : s.frequency === 'annually' ? '/yr' : '/mo';
+  return `${info.sign}${formatCurrency(s.amount, currencyCode)}${freqLabel}`;
+}
+
+/** Build full tooltip text */
+function tooltipText(s: CashFlow, currencyCode: CurrencyCode): string {
+  const parts = [s.label];
+  parts.push(amountStr(s, currencyCode));
+  if (s.type !== 'one-off' && (s.startingValue ?? 0) > 0) {
+    const sv = formatCurrency(s.startingValue!, currencyCode);
+    parts.push(s.type === 'recurring-withdrawal' ? `Lump: ${sv}` : `Starting: ${sv}`);
+  }
+  if (s.type === 'one-off') {
+    parts.push(formatMonth(s.startDate));
+  } else {
+    parts.push(`${formatMonth(s.startDate)} → ${s.endDate ? formatMonth(s.endDate) : '∞'}`);
+  }
+  parts.push(`Growth: ${s.growthRate}%`);
+  return parts.join('\n');
+}
+
+export function TimelineView({ cashFlows, simulationEnd, currencyCode, onEdit }: TimelineViewProps) {
   const [open, setOpen] = useState(false);
 
   if (cashFlows.length === 0) return null;
@@ -70,7 +95,7 @@ export function TimelineView({ cashFlows, simulationEnd, currencyCode }: Timelin
 
       <div className={`ps-tl-body ${open ? 'ps-tl-body--open' : ''}`}>
         <div className="ps-tl-content">
-          {/* Scenario bars */}
+          {/* Cash flow bars */}
           <div className="ps-tl-rows">
             {sorted.map((s) => {
               const info = TYPE_INFO[s.type];
@@ -79,26 +104,33 @@ export function TimelineView({ cashFlows, simulationEnd, currencyCode }: Timelin
 
               const leftPct = Math.max(0, ((startDec - rangeStart) / rangeDuration) * 100);
               const rawWidth = ((endDec - startDec) / rangeDuration) * 100;
-              const widthPct = Math.max(3, rawWidth); // min 3% for visibility
+              const widthPct = Math.max(5, rawWidth); // min 5% for visibility
+              const clampedWidth = Math.min(widthPct, 100 - leftPct);
+              const isNarrow = clampedWidth < 18;
 
-              const freqLabel =
-                s.type === 'one-off' ? '' : s.frequency === 'annually' ? '/yr' : '/mo';
+              const amt = amountStr(s, currencyCode);
 
               return (
-                <div key={s.id} className="ps-tl-row">
+                <div key={s.id} className="ps-tl-row" title={tooltipText(s, currencyCode)}>
                   <div
-                    className={`ps-tl-bar ${info.colorClass} ${!s.enabled ? 'ps-tl-bar--disabled' : ''}`}
+                    className={`ps-tl-bar ${info.colorClass} ${!s.enabled ? 'ps-tl-bar--disabled' : ''} ${onEdit ? 'ps-tl-bar--clickable' : ''}`}
                     style={{
                       left: `${leftPct}%`,
-                      width: `${Math.min(widthPct, 100 - leftPct)}%`,
+                      width: `${clampedWidth}%`,
                     }}
+                    onClick={onEdit ? () => onEdit(s.id) : undefined}
+                    role={onEdit ? 'button' : undefined}
+                    tabIndex={onEdit ? 0 : undefined}
+                    onKeyDown={onEdit ? (e) => { if (e.key === 'Enter' || e.key === ' ') onEdit(s.id); } : undefined}
                   >
-                    <span className="ps-tl-bar-label">{s.label}</span>
-                    <span className="ps-tl-bar-amount">
-                      {info.sign}
-                      {formatCurrency(s.amount, currencyCode)}
-                      {freqLabel}
-                    </span>
+                    {isNarrow ? (
+                      <span className="ps-tl-bar-amount">{amt}</span>
+                    ) : (
+                      <>
+                        <span className="ps-tl-bar-label">{s.label}</span>
+                        <span className="ps-tl-bar-amount">{amt}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               );

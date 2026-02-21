@@ -1,5 +1,16 @@
+import type { CashFlow } from '../utils/simulationEngine';
+
 // ── Currency ──
 export type CurrencyCode = 'GBP' | 'USD' | 'EUR';
+
+// ── Scenarios ──
+export interface SavedScenario {
+  id: string;
+  name: string;
+  startingBalance: number;
+  simulationEnd: string;
+  cashFlows: CashFlow[];
+}
 
 export interface CurrencyInfo {
   code: CurrencyCode;
