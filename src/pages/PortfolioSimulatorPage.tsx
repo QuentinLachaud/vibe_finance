@@ -64,7 +64,7 @@ function CurrencyInput({
 
   const handleBlur = () => {
     const parsed = Number(raw.replace(/,/g, ''));
-    if (!isNaN(parsed) && parsed >= 0) {
+    if (!isNaN(parsed)) {
       onChange(parsed);
     } else {
       setRaw(value.toLocaleString('en-GB'));
@@ -158,16 +158,21 @@ function MonthInput({
 interface CashFlowFormProps {
   initial?: CashFlow;
   currencySymbol: string;
+  savedLabels: string[];
   onSave: (cashFlow: CashFlow) => void;
   onCancel: () => void;
   onDirtyChange?: (dirty: boolean) => void;
   onRegisterSubmit?: (submitFn: (() => void) | null) => void;
+  onLabelSaved?: (label: string) => void;
+  onLabelDeleted?: (label: string) => void;
 }
 
-function CashFlowForm({ initial, currencySymbol, onSave, onCancel, onDirtyChange, onRegisterSubmit }: CashFlowFormProps) {
+function CashFlowForm({ initial, currencySymbol, savedLabels, onSave, onCancel, onDirtyChange, onRegisterSubmit, onLabelSaved, onLabelDeleted }: CashFlowFormProps) {
   const isEditing = !!initial;
-  const [type, setType] = useState<CashFlowType>(initial?.type ?? 'one-off');
+  const [type, setType] = useState<CashFlowType>(initial?.type ?? 'recurring-deposit');
   const [label, setLabel] = useState(initial?.label ?? '');
+  const [showLabelDropdown, setShowLabelDropdown] = useState(false);
+  const labelInputRef = useRef<HTMLInputElement>(null);
   const [amount, setAmount] = useState(initial?.amount ?? 0);
   const [startingValue, setStartingValue] = useState(initial?.startingValue ?? 0);
   const [growthRate, setGrowthRate] = useState(initial?.growthRate ?? 5);
@@ -256,10 +261,12 @@ function CashFlowForm({ initial, currencySymbol, onSave, onCancel, onDirtyChange
   }, [onDirtyChange]);
 
   const handleSubmit = () => {
+    const finalLabel = label || (type === 'one-off' ? 'One-off' : type === 'recurring-deposit' ? 'Deposit' : 'Withdrawal');
+    if (label.trim()) onLabelSaved?.(label.trim());
     onSave({
       id: initial?.id ?? generateId(),
       type,
-      label: label || (type === 'one-off' ? 'One-off' : type === 'recurring-deposit' ? 'Deposit' : 'Withdrawal'),
+      label: finalLabel,
       amount,
       startingValue: isRecurring ? startingValue : undefined,
       growthRate,
@@ -287,12 +294,6 @@ function CashFlowForm({ initial, currencySymbol, onSave, onCancel, onDirtyChange
           <label className="ps-label">Type</label>
           <div className="ps-type-selector">
             <button
-              className={`ps-type-btn ps-type-btn--inflow ${type === 'one-off' ? 'ps-type-btn--active' : ''}`}
-              onClick={() => setType('one-off')}
-            >
-              🎁 One-off
-            </button>
-            <button
               className={`ps-type-btn ps-type-btn--inflow ${type === 'recurring-deposit' ? 'ps-type-btn--active' : ''}`}
               onClick={() => setType('recurring-deposit')}
             >
@@ -304,6 +305,12 @@ function CashFlowForm({ initial, currencySymbol, onSave, onCancel, onDirtyChange
             >
               📤 Withdrawal
             </button>
+            <button
+              className={`ps-type-btn ps-type-btn--inflow ${type === 'one-off' ? 'ps-type-btn--active' : ''}`}
+              onClick={() => setType('one-off')}
+            >
+              🎁 One-off
+            </button>
           </div>
         </div>
       )}
@@ -311,14 +318,42 @@ function CashFlowForm({ initial, currencySymbol, onSave, onCancel, onDirtyChange
       {/* Label */}
       <div className="ps-field">
         <label className="ps-label">Label</label>
-        <input
-          type="text"
-          className="ps-text-input"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="e.g. Inheritance, Pension, Salary..."
-          aria-label="Cash flow label"
-        />
+        <div className="ps-label-combo">
+          <input
+            ref={labelInputRef}
+            type="text"
+            className="ps-text-input"
+            value={label}
+            onChange={(e) => { setLabel(e.target.value); setShowLabelDropdown(true); }}
+            onFocus={() => setShowLabelDropdown(true)}
+            onBlur={() => { setTimeout(() => setShowLabelDropdown(false), 150); }}
+            placeholder="e.g. Inheritance, Pension, Salary..."
+            aria-label="Cash flow label"
+          />
+          {showLabelDropdown && savedLabels.length > 0 && (
+            <div className="ps-label-dropdown">
+              {savedLabels
+                .filter((l) => !label || l.toLowerCase().includes(label.toLowerCase()))
+                .map((l) => (
+                  <div key={l} className="ps-label-dropdown-item">
+                    <button
+                      className="ps-label-dropdown-pick"
+                      onMouseDown={(e) => { e.preventDefault(); setLabel(l); setShowLabelDropdown(false); }}
+                    >
+                      {l}
+                    </button>
+                    <button
+                      className="ps-label-dropdown-del"
+                      onMouseDown={(e) => { e.preventDefault(); onLabelDeleted?.(l); }}
+                      aria-label={`Remove ${l}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Starting Value / Lump Withdrawal (recurring only, right below label) */}
@@ -449,6 +484,9 @@ export function PortfolioSimulatorPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [scenarioSyncing, setScenarioSyncing] = useState(false);
   const [saveAsName, setSaveAsName] = useState('');
+  const [renamingScenario, setRenamingScenario] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [savedLabels, setSavedLabels] = usePersistedState<string[]>('vf-ps-labels', []);
 
   // ── Derived ──
   const activeScenario = savedScenarios.find((s) => s.id === activeScenarioId) ?? null;
@@ -555,6 +593,25 @@ export function PortfolioSimulatorPage() {
       }
     },
     [user, activeScenarioId, setSavedScenarios, handleNewScenario],
+  );
+
+  const handleRenameScenario = useCallback(
+    (newName: string) => {
+      if (!activeScenarioId || !newName.trim()) return;
+      setSavedScenarios((prev) =>
+        prev.map((s) => (s.id === activeScenarioId ? { ...s, name: newName.trim() } : s)),
+      );
+      if (user) {
+        const scenario = savedScenarios.find((s) => s.id === activeScenarioId);
+        if (scenario) {
+          saveScenario(user.uid, { ...scenario, name: newName.trim() }).catch((e) =>
+            console.error('[scenarios] rename failed:', e),
+          );
+        }
+      }
+      setRenamingScenario(false);
+    },
+    [user, activeScenarioId, savedScenarios, setSavedScenarios],
   );
 
   // ── Cash flow handlers ──
@@ -693,7 +750,7 @@ export function PortfolioSimulatorPage() {
               </select>
             )}
 
-            {/* Save As inline row */}
+            {/* Save As / Rename inline row */}
             {showSaveAs ? (
               <div className="ps-scn-save-row">
                 <input
@@ -727,6 +784,33 @@ export function PortfolioSimulatorPage() {
                   Cancel
                 </button>
               </div>
+            ) : renamingScenario ? (
+              <div className="ps-scn-save-row">
+                <input
+                  className="ps-text-input"
+                  placeholder="New name…"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && renameValue.trim()) handleRenameScenario(renameValue);
+                    if (e.key === 'Escape') setRenamingScenario(false);
+                  }}
+                  autoFocus
+                />
+                <button
+                  className="ps-btn ps-btn--primary"
+                  disabled={!renameValue.trim()}
+                  onClick={() => handleRenameScenario(renameValue)}
+                >
+                  Rename
+                </button>
+                <button
+                  className="ps-btn ps-btn--secondary"
+                  onClick={() => setRenamingScenario(false)}
+                >
+                  Cancel
+                </button>
+              </div>
             ) : (
               <div className="ps-scn-actions">
                 {activeScenarioId && isDirty && (
@@ -747,12 +831,20 @@ export function PortfolioSimulatorPage() {
                   + New
                 </button>
                 {activeScenarioId && (
-                  <button
-                    className="ps-btn ps-btn--secondary ps-btn--danger"
-                    onClick={() => handleDeleteScenario(activeScenarioId)}
-                  >
-                    🗑️
-                  </button>
+                  <>
+                    <button
+                      className="ps-btn ps-btn--secondary"
+                      onClick={() => { setRenamingScenario(true); setRenameValue(activeScenario?.name ?? ''); }}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="ps-btn ps-btn--secondary ps-btn--danger"
+                      onClick={() => handleDeleteScenario(activeScenarioId)}
+                    >
+                      🗑️
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -830,10 +922,13 @@ export function PortfolioSimulatorPage() {
               <CashFlowForm
                 initial={editingCashFlow ?? undefined}
                 currencySymbol={currency.symbol}
+                savedLabels={savedLabels}
                 onSave={handleSaveCashFlow}
                 onCancel={handleCancelForm}
                 onDirtyChange={setIsCashFlowFormDirty}
                 onRegisterSubmit={(fn) => { submitCashFlowFormRef.current = fn; }}
+                onLabelSaved={(l) => setSavedLabels((prev) => prev.includes(l) ? prev : [...prev, l].sort())}
+                onLabelDeleted={(l) => setSavedLabels((prev) => prev.filter((x) => x !== l))}
               />
             </div>
           )}
@@ -889,21 +984,21 @@ export function PortfolioSimulatorPage() {
               <h2 className="ps-card-title">Results</h2>
               <div className="ps-results-grid">
                 <div className="ps-result-item">
-                  <span className="ps-result-label">Median Portfolio Value</span>
+                  <span className="ps-result-label">Median (Expected)</span>
                   <span className="ps-result-value ps-result-value--cyan">
                     {formatCurrency(result.finalMedian, currency.code)}
                   </span>
                 </div>
                 <div className="ps-result-item">
-                  <span className="ps-result-label">Optimistic (90th)</span>
+                  <span className="ps-result-label">Optimistic (75th)</span>
                   <span className="ps-result-value ps-result-value--green">
-                    {formatCurrency(result.finalP90, currency.code)}
+                    {formatCurrency(result.finalP75, currency.code)}
                   </span>
                 </div>
                 <div className="ps-result-item">
-                  <span className="ps-result-label">Conservative (10th)</span>
+                  <span className="ps-result-label">Pessimistic (25th)</span>
                   <span className="ps-result-value ps-result-value--yellow">
-                    {formatCurrency(result.finalP10, currency.code)}
+                    {formatCurrency(result.finalP25, currency.code)}
                   </span>
                 </div>
               </div>
@@ -913,9 +1008,9 @@ export function PortfolioSimulatorPage() {
           {/* Monte Carlo Chart */}
           {result && result.timeSteps.length > 0 && (
             <div className="ps-card ps-chart-card">
-              <h2 className="ps-card-title">Monte Carlo Simulation</h2>
               <MonteCarloChart
                 data={result.timeSteps}
+                result={result}
                 currencyCode={currency.code}
               />
             </div>

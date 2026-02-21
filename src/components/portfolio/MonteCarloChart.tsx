@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   AreaChart,
   Area,
@@ -8,13 +8,19 @@ import {
   Legend,
   ResponsiveContainer,
   CartesianGrid,
+  BarChart,
+  Bar,
+  Cell,
+  ReferenceLine,
+  Label,
 } from 'recharts';
 import { formatCurrency } from '../../utils/currency';
-import type { TimeStep } from '../../utils/simulationEngine';
+import type { TimeStep, SimulationResult } from '../../utils/simulationEngine';
 import type { CurrencyCode } from '../../types';
 
 interface MonteCarloChartProps {
   data: TimeStep[];
+  result: SimulationResult;
   currencyCode: CurrencyCode;
 }
 
@@ -55,8 +61,134 @@ function ChartTooltip({ active, payload, label, currencyCode }: any) {
   );
 }
 
-export function MonteCarloChart({ data, currencyCode }: MonteCarloChartProps) {
-  if (!data.length) return null;
+/** Build histogram bins from the final distribution. */
+function buildHistogram(values: number[], numBins: number = 30) {
+  if (!values.length) return [];
+  const min = values[0];
+  const max = values[values.length - 1];
+  if (min === max) return [{ binStart: min, binEnd: max, count: values.length, label: '' }];
+
+  const binSize = (max - min) / numBins;
+  const bins: { binStart: number; binEnd: number; count: number; label: string }[] = [];
+
+  for (let i = 0; i < numBins; i++) {
+    const binStart = min + i * binSize;
+    const binEnd = binStart + binSize;
+    bins.push({ binStart, binEnd, count: 0, label: '' });
+  }
+
+  for (const v of values) {
+    let idx = Math.floor((v - min) / binSize);
+    if (idx >= numBins) idx = numBins - 1;
+    if (idx < 0) idx = 0;
+    bins[idx].count++;
+  }
+
+  // Create labels for bins
+  for (const bin of bins) {
+    const mid = (bin.binStart + bin.binEnd) / 2;
+    if (mid >= 1_000_000) bin.label = `${(mid / 1_000_000).toFixed(1)}M`;
+    else if (mid >= 1_000) bin.label = `${(mid / 1_000).toFixed(0)}K`;
+    else bin.label = String(Math.round(mid));
+  }
+
+  return bins;
+}
+
+function pctile(sorted: number[], p: number): number {
+  if (!sorted.length) return 0;
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+/** Distribution bar chart (back face of the flip card). */
+function DistributionView({
+  distribution,
+  currencyCode,
+  hoveredLabel,
+}: {
+  distribution: number[];
+  currencyCode: CurrencyCode;
+  hoveredLabel: string;
+}) {
+  const bins = useMemo(() => buildHistogram(distribution, 30), [distribution]);
+  const p25 = useMemo(() => pctile(distribution, 25), [distribution]);
+  const median = useMemo(() => pctile(distribution, 50), [distribution]);
+  const p75 = useMemo(() => pctile(distribution, 75), [distribution]);
+
+  if (!bins.length) return null;
+
+  return (
+    <div className="ps-dist-view">
+      <div className="ps-dist-header">
+        <h3 className="ps-dist-title">Outcome Distribution — {hoveredLabel || 'End of Horizon'}</h3>
+        <p className="ps-dist-subtitle">
+          Each bar shows how many simulations landed in that value range.
+          Highlighted regions mark the key percentiles.
+        </p>
+      </div>
+
+      <div className="ps-dist-stats">
+        <div className="ps-dist-stat">
+          <span className="ps-dist-stat-label" style={{ color: '#eab308' }}>25th (Pessimistic)</span>
+          <span className="ps-dist-stat-value">{formatCurrency(Math.round(p25), currencyCode)}</span>
+        </div>
+        <div className="ps-dist-stat">
+          <span className="ps-dist-stat-label" style={{ color: COLOR_MEDIAN }}>Median (Expected)</span>
+          <span className="ps-dist-stat-value">{formatCurrency(Math.round(median), currencyCode)}</span>
+        </div>
+        <div className="ps-dist-stat">
+          <span className="ps-dist-stat-label" style={{ color: COLOR_INNER }}>75th (Optimistic)</span>
+          <span className="ps-dist-stat-value">{formatCurrency(Math.round(p75), currencyCode)}</span>
+        </div>
+      </div>
+
+      <div className="ps-chart-container">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={bins} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
+              axisLine={{ stroke: 'var(--border-color)' }}
+              tickLine={false}
+              interval={Math.max(0, Math.floor(bins.length / 6) - 1)}
+            />
+            <YAxis
+              tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Bar dataKey="count" radius={[2, 2, 0, 0]} animationDuration={400}>
+              {bins.map((bin, idx) => {
+                const mid = (bin.binStart + bin.binEnd) / 2;
+                let fill = 'rgba(139, 92, 246, 0.5)'; // outer / default violet
+                if (mid >= p25 && mid <= p75) fill = 'rgba(16, 185, 129, 0.6)'; // inner emerald
+                return <Cell key={idx} fill={fill} />;
+              })}
+            </Bar>
+            <ReferenceLine x={bins.find(b => (b.binStart + b.binEnd) / 2 >= median)?.label} stroke={COLOR_MEDIAN} strokeWidth={2} strokeDasharray="4 4">
+              <Label value="Median" position="top" fill={COLOR_MEDIAN} fontSize={11} />
+            </ReferenceLine>
+            <ReferenceLine x={bins.find(b => (b.binStart + b.binEnd) / 2 >= p25)?.label} stroke="#eab308" strokeWidth={1.5} strokeDasharray="4 4">
+              <Label value="25th" position="top" fill="#eab308" fontSize={10} />
+            </ReferenceLine>
+            <ReferenceLine x={bins.find(b => (b.binStart + b.binEnd) / 2 >= p75)?.label} stroke={COLOR_INNER} strokeWidth={1.5} strokeDasharray="4 4">
+              <Label value="75th" position="top" fill={COLOR_INNER} fontSize={10} />
+            </ReferenceLine>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartProps) {
+  const [flipped, setFlipped] = useState(false);
+  const [hoveredLabel, setHoveredLabel] = useState('');
 
   // Pre-compute stacked band data for correct layering
   const chartData = useMemo(
@@ -71,103 +203,140 @@ export function MonteCarloChart({ data, currencyCode }: MonteCarloChartProps) {
     [data],
   );
 
+  const handleMouseMove = useCallback((state: any) => {
+    if (state?.activeLabel) {
+      setHoveredLabel(state.activeLabel);
+    }
+  }, []);
+
+  if (!data.length) return null;
+
   return (
-    <div className="ps-chart-container">
-      <ResponsiveContainer width="100%" height={380}>
-        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-          <defs>
-            <linearGradient id="outerBandGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={COLOR_OUTER} stopOpacity={0.4} />
-              <stop offset="100%" stopColor={COLOR_OUTER} stopOpacity={0.08} />
-            </linearGradient>
-            <linearGradient id="innerBandGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={COLOR_INNER} stopOpacity={0.5} />
-              <stop offset="100%" stopColor={COLOR_INNER} stopOpacity={0.12} />
-            </linearGradient>
-          </defs>
+    <div className={`ps-flip-container ${flipped ? 'ps-flip-container--flipped' : ''}`}>
+      {/* Front face — Monte Carlo chart */}
+      <div className="ps-flip-face ps-flip-face--front">
+        <div className="ps-flip-header">
+          <h2 className="ps-card-title">Monte Carlo Simulation</h2>
+          <button className="ps-flip-btn" onClick={() => setFlipped(true)} title="Show outcome distribution">
+            📊 Distribution
+          </button>
+        </div>
+        <div className="ps-chart-container">
+          <ResponsiveContainer width="100%" height={380}>
+            <AreaChart
+              data={chartData}
+              margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+              onMouseMove={handleMouseMove}
+            >
+              <defs>
+                <linearGradient id="outerBandGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={COLOR_OUTER} stopOpacity={0.4} />
+                  <stop offset="100%" stopColor={COLOR_OUTER} stopOpacity={0.08} />
+                </linearGradient>
+                <linearGradient id="innerBandGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={COLOR_INNER} stopOpacity={0.5} />
+                  <stop offset="100%" stopColor={COLOR_INNER} stopOpacity={0.12} />
+                </linearGradient>
+              </defs>
 
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
 
-          <XAxis
-            dataKey="label"
-            tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
-            axisLine={{ stroke: 'var(--border-color)' }}
-            tickLine={false}
-            interval="preserveStartEnd"
-          />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                axisLine={{ stroke: 'var(--border-color)' }}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
 
-          <YAxis
-            tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v) => {
-              if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-              if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-              return String(v);
-            }}
-          />
+              <YAxis
+                tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => {
+                  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+                  return String(v);
+                }}
+              />
 
-          <Tooltip
-            content={<ChartTooltip currencyCode={currencyCode} />}
-            cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
-          />
+              <Tooltip
+                content={<ChartTooltip currencyCode={currencyCode} />}
+                cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
+              />
 
-          {/* Invisible base up to p10 */}
-          <Area
-            dataKey="p10_base"
-            stackId="bands"
-            stroke="none"
-            fill="transparent"
-            legendType="none"
-            animationDuration={600}
-          />
+              {/* Invisible base up to p10 */}
+              <Area
+                dataKey="p10_base"
+                stackId="bands"
+                stroke="none"
+                fill="transparent"
+                legendType="none"
+                animationDuration={600}
+              />
 
-          {/* P10–P25: outer band (lower) — violet */}
-          <Area
-            dataKey="band_10_25"
-            stackId="bands"
-            stroke="none"
-            fill="url(#outerBandGrad)"
-            name="10th–90th"
-            animationDuration={600}
-          />
+              {/* P10–P25: outer band (lower) — violet */}
+              <Area
+                dataKey="band_10_25"
+                stackId="bands"
+                stroke="none"
+                fill="url(#outerBandGrad)"
+                name="10th–90th"
+                animationDuration={600}
+              />
 
-          {/* P25–P75: inner band — emerald */}
-          <Area
-            dataKey="band_25_75"
-            stackId="bands"
-            stroke="none"
-            fill="url(#innerBandGrad)"
-            name="25th–75th"
-            animationDuration={600}
-          />
+              {/* P25–P75: inner band — emerald */}
+              <Area
+                dataKey="band_25_75"
+                stackId="bands"
+                stroke="none"
+                fill="url(#innerBandGrad)"
+                name="25th–75th"
+                animationDuration={600}
+              />
 
-          {/* P75–P90: outer band (upper) — violet */}
-          <Area
-            dataKey="band_75_90"
-            stackId="bands"
-            stroke="none"
-            fill="url(#outerBandGrad)"
-            legendType="none"
-            animationDuration={600}
-          />
+              {/* P75–P90: outer band (upper) — violet */}
+              <Area
+                dataKey="band_75_90"
+                stackId="bands"
+                stroke="none"
+                fill="url(#outerBandGrad)"
+                legendType="none"
+                animationDuration={600}
+              />
 
-          {/* Median line — bright cyan */}
-          <Area
-            dataKey="median"
-            stroke={COLOR_MEDIAN}
-            strokeWidth={2.5}
-            fill="none"
-            name="Median"
-            dot={false}
-            animationDuration={800}
-          />
+              {/* Median line — bright cyan */}
+              <Area
+                dataKey="median"
+                stroke={COLOR_MEDIAN}
+                strokeWidth={2.5}
+                fill="none"
+                name="Median"
+                dot={false}
+                animationDuration={800}
+              />
 
-          <Legend
-            wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+              <Legend
+                wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Back face — Distribution chart */}
+      <div className="ps-flip-face ps-flip-face--back">
+        <div className="ps-flip-header">
+          <button className="ps-flip-btn" onClick={() => setFlipped(false)} title="Show Monte Carlo chart">
+            📈 Monte Carlo
+          </button>
+        </div>
+        <DistributionView
+          distribution={result.finalDistribution}
+          currencyCode={currencyCode}
+          hoveredLabel={hoveredLabel}
+        />
+      </div>
     </div>
   );
 }

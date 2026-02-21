@@ -50,7 +50,13 @@ export interface SimulationResult {
   timeSteps: TimeStep[];
   finalMedian: number;
   finalP10: number;
+  finalP25: number;
+  finalP75: number;
   finalP90: number;
+  /** Raw distribution of final portfolio values (sorted ascending). */
+  finalDistribution: number[];
+  /** % of paths that ended with value > 0. */
+  survivalRate: number;
 }
 
 // ── Helpers ──
@@ -244,7 +250,11 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
       timeSteps: [],
       finalMedian: startingBalance,
       finalP10: startingBalance,
+      finalP25: startingBalance,
+      finalP75: startingBalance,
       finalP90: startingBalance,
+      finalDistribution: [startingBalance],
+      survivalRate: 100,
     };
   }
 
@@ -305,12 +315,17 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
   }
 
   const finalValues = paths.map((path) => path[totalMonths]).sort((a, b) => a - b);
+  const survived = finalValues.filter((v) => v > 0).length;
 
   return {
     timeSteps,
     finalMedian: Math.round(percentile(finalValues, 50)),
     finalP10: Math.round(percentile(finalValues, 10)),
+    finalP25: Math.round(percentile(finalValues, 25)),
+    finalP75: Math.round(percentile(finalValues, 75)),
     finalP90: Math.round(percentile(finalValues, 90)),
+    finalDistribution: finalValues,
+    survivalRate: Math.round((survived / finalValues.length) * 100),
   };
 }
 
