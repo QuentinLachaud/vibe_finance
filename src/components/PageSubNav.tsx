@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { PAGE_NAV_ITEMS } from '../router/navigation';
+import { NAV_ITEMS } from '../router/navigation';
 
 export function PageSubNav() {
   return (
     <nav className="page-sub-nav">
-      {PAGE_NAV_ITEMS.map((item) => (
+      {NAV_ITEMS.map((item: { path: string; label: string }) => (
         <NavLink
           key={item.path}
           to={item.path}
