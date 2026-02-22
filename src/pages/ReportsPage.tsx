@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../state/AuthContext';
 import { useCurrency } from '../state/CurrencyContext';
 import { formatCurrency } from '../utils/currency';
@@ -10,8 +10,9 @@ import {
   type SimulationResult,
 } from '../utils/simulationEngine';
 import { LoginModal } from '../components/LoginModal';
+import { LoadingCoin } from '../components/LoadingCoin';
 import type { SavedScenario, CurrencyCode } from '../types';
-import { loadScenarios } from '../services/scenarioService';
+import { loadScenarios } from '../services/userDataService';
 
 // ── Types ──
 
@@ -580,20 +581,6 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode): string {
 </html>`;
 }
 
-// ── Gold coin loading animation component ──
-
-function GoldCoinLoader() {
-  return (
-    <div className="rp-coin-loader">
-      <div className="rp-coin">
-        <div className="rp-coin-face rp-coin-front">£</div>
-        <div className="rp-coin-face rp-coin-back">$</div>
-      </div>
-      <p className="rp-coin-text">Generating report…</p>
-    </div>
-  );
-}
-
 // ── Component ──
 
 export function ReportsPage() {
@@ -620,11 +607,6 @@ export function ReportsPage() {
     }
     setLoadingScenarios(false);
   }, [user]);
-
-  // Auto-load
-  useEffect(() => {
-    if (user && !loaded) loadAll();
-  }, [user, loaded, loadAll]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
@@ -708,7 +690,7 @@ export function ReportsPage() {
         <h1 className="ps-page-title">Reports</h1>
 
         {/* Loading coin overlay */}
-        {generating && <GoldCoinLoader />}
+        {generating && <LoadingCoin text="Generating report…" />}
 
         {/* Scenario selection */}
         <div className="ps-card rp-card">
@@ -721,7 +703,7 @@ export function ReportsPage() {
 
           {loadingScenarios && (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <GoldCoinLoader />
+              <LoadingCoin text="Loading scenarios…" />
             </div>
           )}
 

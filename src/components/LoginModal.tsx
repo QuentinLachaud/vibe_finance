@@ -3,6 +3,7 @@ import { useAuth } from '../state/AuthContext';
 
 interface LoginModalProps {
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 function GoogleIcon() {
@@ -28,17 +29,16 @@ function GoogleIcon() {
   );
 }
 
-export function LoginModal({ onClose }: LoginModalProps) {
+export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const { signInWithGoogle, authEnabled } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
-    console.log('[LoginModal] Google button clicked');
     setErrorMessage(null);
     const result = await signInWithGoogle();
-    console.log('[LoginModal] signInWithGoogle result:', result);
     if (result.ok) {
-      onClose();
+      if (onSuccess) onSuccess();
+      else onClose();
       return;
     }
     setErrorMessage(result.message || 'Unable to sign in with Google.');
@@ -47,9 +47,8 @@ export function LoginModal({ onClose }: LoginModalProps) {
   return (
     <div className="login-overlay" onClick={onClose}>
       <div className="login-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="login-logo">💰</div>
-        <h2 className="login-title">Welcome to Vibe Finance</h2>
-        <p className="login-subtitle">Sign in to save your simulations</p>
+        <h2 className="login-title">Welcome to TakeHomeCalc</h2>
+        <p className="login-subtitle">Sign in to save your data and access it anywhere</p>
 
         <button className="login-google-btn" onClick={handleGoogleLogin}>
           <GoogleIcon />

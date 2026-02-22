@@ -15,6 +15,8 @@ import {
 import { useCurrency } from '../state/CurrencyContext';
 import { formatCurrency } from '../utils/currency';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useAuth } from '../state/AuthContext';
+import { loadNetWorth, saveNetWorth } from '../services/userDataService';
 import type { CurrencyCode } from '../types';
 
 // ── Types ──
@@ -698,7 +700,18 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
 
 export function NetWorthPage() {
   const { currency } = useCurrency();
+  const { user } = useAuth();
   const [data, setData] = usePersistedState<NetWorthData>('vf-net-worth-data', defaultData);
+
+  // Load from Firestore on first login
+  const firestoreLoaded = useRef(false);
+  useEffect(() => {
+    if (!user || firestoreLoaded.current) return;
+    firestoreLoaded.current = true;
+    loadNetWorth(user.uid).then((remote) => {
+      if (remote) setData(remote as NetWorthData);
+    }).catch((e) => console.error('[net-worth] load failed:', e));
+  }, [user, setData]);
 
   const assets = data.assets;
   const customTypes = data.customTypes;
@@ -706,9 +719,16 @@ export function NetWorthPage() {
   const updateData = useCallback((fn: (prev: NetWorthData) => NetWorthData) => {
     setData((prev) => {
       const next = fn(prev);
-      return { ...next, lastModified: nowISO() };
+      const updated = { ...next, lastModified: nowISO() };
+      // Sync to Firestore in the background
+      if (user) {
+        saveNetWorth(user.uid, updated).catch((e) =>
+          console.error('[net-worth] save failed:', e),
+        );
+      }
+      return updated;
     });
-  }, [setData]);
+  }, [setData, user]);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

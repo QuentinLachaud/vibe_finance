@@ -32,9 +32,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
+    root.classList.add('theme-transitioning');
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
     localStorage.setItem(STORAGE_KEY, theme);
+
+    const timer = setTimeout(() => {
+      root.classList.remove('theme-transitioning');
+    }, 2100);
+    return () => clearTimeout(timer);
   }, [theme]);
 
   const toggleTheme = () =>

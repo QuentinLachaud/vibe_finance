@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   BarChart,
   Bar,
@@ -9,11 +9,13 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
+import jsPDF from 'jspdf';
 import { useCurrency } from '../state/CurrencyContext';
 import { formatCurrency } from '../utils/currency';
+import { useAuthGate } from '../hooks/useAuthGate';
+import { LoginModal } from '../components/LoginModal';
 import {
   calculateCompoundInterest,
-  type CompoundInterestInputs,
   type CompoundInterestResult,
 } from '../utils/compoundInterest';
 
@@ -177,6 +179,7 @@ function loadCIState(): Partial<CIPersistedState> {
 // ── Main Page ──
 export function CompoundInterestPage() {
   const { currency } = useCurrency();
+  const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
 
   // Load persisted values (or fallback to defaults)
   const saved = useMemo(() => loadCIState(), []);
@@ -244,6 +247,126 @@ export function CompoundInterestPage() {
     setCalcCounter((c) => c + 1);
   }, []);
 
+  // ── Export CSV ──
+  const handleExportCsv = useCallback(() => {
+    if (!result) return;
+    const rows = tableView === 'annual' ? result.yearByYear : result.monthByMonth;
+    const header = tableView === 'annual'
+      ? ['Year', isWithdrawal ? 'Withdrawn' : 'Deposits', 'Interest', 'Total Value']
+      : ['Month', isWithdrawal ? 'Withdrawn' : 'Deposits', 'Interest', 'Total Value'];
+
+    const csvRows = [header.join(',')];
+    for (const row of rows) {
+      if (tableView === 'annual' && 'year' in row) {
+        const r = row as typeof result.yearByYear[0];
+        csvRows.push([
+          r.year,
+          isWithdrawal ? r.withdrawals : r.deposits,
+          r.interest,
+          r.totalValue,
+        ].join(','));
+      } else if ('month' in row) {
+        const r = row as typeof result.monthByMonth[0];
+        csvRows.push([
+          `Y${r.year} M${r.monthInYear}`,
+          isWithdrawal ? r.withdrawals : r.deposits,
+          r.interest,
+          r.totalValue,
+        ].join(','));
+      }
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `compound-interest-${tableView}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [result, tableView, isWithdrawal]);
+
+  // ── Export PDF ──
+  const handleExportPdf = useCallback(() => {
+    if (!result) return;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pw = doc.internal.pageSize.getWidth();
+    const margin = 16;
+    const contentW = pw - margin * 2;
+    let y = 16;
+
+    // Header
+    doc.setFillColor(11, 17, 32);
+    doc.rect(0, 0, pw, 30, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(241, 245, 249);
+    doc.text('Compound Interest Breakdown', margin, 14);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`TakeHomeCalc.co.uk  |  ${tableView === 'annual' ? 'Annual' : 'Monthly'} View  |  ${isWithdrawal ? 'Withdrawal' : 'Deposit'} Mode`, margin, 22);
+    y = 36;
+
+    const rows = tableView === 'annual' ? result.yearByYear : result.monthByMonth;
+    const colLabels = [
+      tableView === 'annual' ? 'Year' : 'Month',
+      isWithdrawal ? 'Withdrawn' : 'Deposits',
+      'Interest',
+      'Total Value',
+    ];
+    const colX = [margin + 2, margin + contentW * 0.25, margin + contentW * 0.5, margin + contentW * 0.75];
+
+    // Table header
+    doc.setFillColor(15, 23, 41);
+    doc.rect(margin, y, contentW, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    colLabels.forEach((lbl, i) => doc.text(lbl, colX[i], y + 5));
+    y += 7;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const fmt = (n: number) => currency.symbol + Math.round(n).toLocaleString('en-GB');
+
+    for (const row of rows) {
+      if (y > 275) {
+        doc.addPage();
+        y = 16;
+      }
+      const isEven = rows.indexOf(row) % 2 === 0;
+      if (isEven) {
+        doc.setFillColor(22, 32, 50);
+        doc.rect(margin, y, contentW, 6, 'F');
+      }
+      doc.setTextColor(148, 163, 184);
+      if ('month' in row && 'monthInYear' in row) {
+        const r = row as typeof result.monthByMonth[0];
+        doc.text(`Y${r.year} M${r.monthInYear}`, colX[0], y + 4.5);
+        doc.text(fmt(isWithdrawal ? r.withdrawals : r.deposits), colX[1], y + 4.5);
+        doc.text(fmt(r.interest), colX[2], y + 4.5);
+        doc.setTextColor(34, 211, 238);
+        doc.text(fmt(r.totalValue), colX[3], y + 4.5);
+      } else {
+        const r = row as typeof result.yearByYear[0];
+        doc.text(String(r.year), colX[0], y + 4.5);
+        doc.text(fmt(isWithdrawal ? r.withdrawals : r.deposits), colX[1], y + 4.5);
+        doc.text(fmt(r.interest), colX[2], y + 4.5);
+        doc.setTextColor(34, 211, 238);
+        doc.text(fmt(r.totalValue), colX[3], y + 4.5);
+      }
+      y += 6;
+    }
+
+    // Footer
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Generated by TakeHomeCalc.co.uk', pw / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
+
+    doc.save(`compound-interest-${tableView}.pdf`);
+  }, [result, tableView, isWithdrawal, currency.symbol]);
+
   // Chart data — stacked positive segments only
   const chartData = useMemo(() => {
     if (!result) return [];
@@ -269,15 +392,9 @@ export function CompoundInterestPage() {
     });
   }, [result, isWithdrawal]);
 
-  // Table rows — annual or monthly
-  const tableRows = useMemo(() => {
-    if (!result) return [];
-    if (tableView === 'annual') return result.yearByYear;
-    return result.monthByMonth;
-  }, [result, tableView]);
-
   return (
     <div className="ci-page">
+      {showLogin && <LoginModal onClose={onLoginClose} onSuccess={onLoginSuccess} />}
       {/* ── Page Header ── */}
       <div className="page-header">
         <h1 className="page-title">Compound Interest Calculator</h1>
@@ -584,99 +701,112 @@ export function CompoundInterestPage() {
             </div>
           )}
 
-          {/* Collapsible Year-by-Year / Month-by-Month Table */}
-          {result && (
-            <div className="ci-card ci-table-card">
-              <div className="ci-table-header">
-                <button
-                  className="ci-table-toggle"
-                  onClick={() => setTableOpen((v) => !v)}
-                  aria-expanded={tableOpen}
-                  aria-label="Toggle breakdown table"
-                >
-                  <span>Breakdown Table</span>
-                  <span className={`ci-table-arrow ${tableOpen ? 'ci-table-arrow--open' : ''}`}>
-                    ▼
-                  </span>
-                </button>
-
-                {tableOpen && (
-                  <div className="ci-table-view-toggle">
-                    <button
-                      className={`ci-toggle-btn ${tableView === 'annual' ? 'ci-toggle-btn--active' : ''}`}
-                      onClick={() => setTableView('annual')}
-                    >
-                      Annual
-                    </button>
-                    <button
-                      className={`ci-toggle-btn ${tableView === 'monthly' ? 'ci-toggle-btn--active' : ''}`}
-                      onClick={() => setTableView('monthly')}
-                    >
-                      Monthly
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className={`ci-table-body ${tableOpen ? 'ci-table-body--open' : ''}`}>
-                <div className="ci-table-scroll">
-                  <table className="ci-table" aria-label="Compound interest breakdown">
-                    <thead>
-                      <tr>
-                        <th className="ci-th ci-th--left">
-                          {tableView === 'annual' ? 'Year' : 'Month'}
-                        </th>
-                        <th className="ci-th ci-th--right">
-                          {isWithdrawal ? 'Withdrawn' : 'Deposits'}
-                        </th>
-                        <th className="ci-th ci-th--right">Interest</th>
-                        <th className="ci-th ci-th--right">Total Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tableView === 'annual'
-                        ? result.yearByYear.map((row) => (
-                            <tr key={row.year} className="ci-tr">
-                              <td className="ci-td ci-td--left">{row.year}</td>
-                              <td className="ci-td ci-td--right">
-                                {isWithdrawal
-                                  ? formatCurrency(row.withdrawals, currency.code)
-                                  : formatCurrency(row.deposits, currency.code)}
-                              </td>
-                              <td className="ci-td ci-td--right ci-td--interest">
-                                {formatCurrency(row.interest, currency.code)}
-                              </td>
-                              <td className="ci-td ci-td--right ci-td--total">
-                                {formatCurrency(row.totalValue, currency.code)}
-                              </td>
-                            </tr>
-                          ))
-                        : result.monthByMonth.map((row) => (
-                            <tr key={row.month} className="ci-tr">
-                              <td className="ci-td ci-td--left">
-                                Y{row.year} M{row.monthInYear}
-                              </td>
-                              <td className="ci-td ci-td--right">
-                                {isWithdrawal
-                                  ? formatCurrency(row.withdrawals, currency.code)
-                                  : formatCurrency(row.deposits, currency.code)}
-                              </td>
-                              <td className="ci-td ci-td--right ci-td--interest">
-                                {formatCurrency(row.interest, currency.code)}
-                              </td>
-                              <td className="ci-td ci-td--right ci-td--total">
-                                {formatCurrency(row.totalValue, currency.code)}
-                              </td>
-                            </tr>
-                          ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* ── Full-width Breakdown Table (below both columns) ── */}
+      {result && (
+        <div className="ci-card ci-table-card ci-table-card--full">
+          <div className="ci-table-header">
+            <button
+              className="ci-table-toggle"
+              onClick={() => setTableOpen((v) => !v)}
+              aria-expanded={tableOpen}
+              aria-label="Toggle breakdown table"
+            >
+              <span>Breakdown Table</span>
+              <span className={`ci-table-arrow ${tableOpen ? 'ci-table-arrow--open' : ''}`}>
+                ▼
+              </span>
+            </button>
+
+            {tableOpen && (
+              <div className="ci-table-controls">
+                <div className="ci-table-view-toggle">
+                  <button
+                    className={`ci-toggle-btn ${tableView === 'annual' ? 'ci-toggle-btn--active' : ''}`}
+                    onClick={() => setTableView('annual')}
+                  >
+                    Annual
+                  </button>
+                  <button
+                    className={`ci-toggle-btn ${tableView === 'monthly' ? 'ci-toggle-btn--active' : ''}`}
+                    onClick={() => setTableView('monthly')}
+                  >
+                    Monthly
+                  </button>
+                </div>
+                <div className="ci-export-group">
+                  <button className="ci-export-btn" onClick={() => gate(() => handleExportCsv())}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    CSV
+                  </button>
+                  <button className="ci-export-btn" onClick={() => gate(() => handleExportPdf())}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    PDF
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={`ci-table-body ${tableOpen ? 'ci-table-body--open' : ''}`}>
+            <div className="ci-table-scroll">
+              <table className="ci-table" aria-label="Compound interest breakdown">
+                <thead>
+                  <tr>
+                    <th className="ci-th ci-th--left">
+                      {tableView === 'annual' ? 'Year' : 'Month'}
+                    </th>
+                    <th className="ci-th ci-th--right">
+                      {isWithdrawal ? 'Withdrawn' : 'Deposits'}
+                    </th>
+                    <th className="ci-th ci-th--right">Interest</th>
+                    <th className="ci-th ci-th--right">Total Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableView === 'annual'
+                    ? result.yearByYear.map((row) => (
+                        <tr key={row.year} className="ci-tr">
+                          <td className="ci-td ci-td--left">{row.year}</td>
+                          <td className="ci-td ci-td--right">
+                            {isWithdrawal
+                              ? formatCurrency(row.withdrawals, currency.code)
+                              : formatCurrency(row.deposits, currency.code)}
+                          </td>
+                          <td className="ci-td ci-td--right ci-td--interest">
+                            {formatCurrency(row.interest, currency.code)}
+                          </td>
+                          <td className="ci-td ci-td--right ci-td--total">
+                            {formatCurrency(row.totalValue, currency.code)}
+                          </td>
+                        </tr>
+                      ))
+                    : result.monthByMonth.map((row) => (
+                        <tr key={row.month} className="ci-tr">
+                          <td className="ci-td ci-td--left">
+                            Y{row.year} M{row.monthInYear}
+                          </td>
+                          <td className="ci-td ci-td--right">
+                            {isWithdrawal
+                              ? formatCurrency(row.withdrawals, currency.code)
+                              : formatCurrency(row.deposits, currency.code)}
+                          </td>
+                          <td className="ci-td ci-td--right ci-td--interest">
+                            {formatCurrency(row.interest, currency.code)}
+                          </td>
+                          <td className="ci-td ci-td--right ci-td--total">
+                            {formatCurrency(row.totalValue, currency.code)}
+                          </td>
+                        </tr>
+                      ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

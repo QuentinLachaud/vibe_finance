@@ -15,7 +15,8 @@ import { MonteCarloChart } from '../components/portfolio/MonteCarloChart';
 import { TimelineView } from '../components/portfolio/TimelineView';
 import { LoginModal } from '../components/LoginModal';
 import { usePersistedState } from '../hooks/usePersistedState';
-import { loadScenarios, saveScenario, removeScenario } from '../services/scenarioService';
+import { useAuthGate } from '../hooks/useAuthGate';
+import { loadScenarios, saveScenario, removeScenario } from '../services/userDataService';
 import type { SavedScenario } from '../types';
 
 // ── Helpers ──
@@ -481,7 +482,7 @@ export function PortfolioSimulatorPage() {
   const [horizonMode, setHorizonMode] = usePersistedState<'date' | 'years'>('vf-ps-horizon-mode', 'years');
   const [tableOpen, setTableOpen] = useState(false);
   const [showSaveAs, setShowSaveAs] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const { gate, showLogin: showLoginModal, onLoginSuccess, onLoginClose } = useAuthGate();
   const [scenarioSyncing, setScenarioSyncing] = useState(false);
   const [saveAsName, setSaveAsName] = useState('');
   const [renamingScenario, setRenamingScenario] = useState(false);
@@ -532,36 +533,38 @@ export function PortfolioSimulatorPage() {
   // ── Scenario handlers ──
   const handleSaveAs = useCallback(
     (name: string) => {
-      if (!user) { setShowLoginModal(true); return; }
-      const newScenario: SavedScenario = {
-        id: generateId(),
-        name,
-        startingBalance: 0,
-        simulationEnd,
-        cashFlows: [...cashFlows],
-      };
-      setSavedScenarios((prev) => [...prev, newScenario]);
-      setActiveScenarioId(newScenario.id);
-      saveScenario(user.uid, newScenario).catch((e) => console.error('[scenarios] save-as failed:', e));
+      gate(() => {
+        const newScenario: SavedScenario = {
+          id: generateId(),
+          name,
+          startingBalance: 0,
+          simulationEnd,
+          cashFlows: [...cashFlows],
+        };
+        setSavedScenarios((prev) => [...prev, newScenario]);
+        setActiveScenarioId(newScenario.id);
+        if (user) saveScenario(user.uid, newScenario).catch((e) => console.error('[scenarios] save-as failed:', e));
+      });
     },
-    [user, simulationEnd, cashFlows, setSavedScenarios, setActiveScenarioId],
+    [user, gate, simulationEnd, cashFlows, setSavedScenarios, setActiveScenarioId],
   );
 
   const handleSave = useCallback(() => {
     if (!activeScenarioId) return;
-    if (!user) { setShowLoginModal(true); return; }
-    const updated: SavedScenario = {
-      id: activeScenarioId,
-      name: activeScenario?.name ?? 'Scenario',
-      startingBalance: 0,
-      simulationEnd,
-      cashFlows: [...cashFlows],
-    };
-    setSavedScenarios((prev) =>
-      prev.map((s) => (s.id === activeScenarioId ? updated : s)),
-    );
-    saveScenario(user.uid, updated).catch((e) => console.error('[scenarios] save failed:', e));
-  }, [user, activeScenarioId, activeScenario, simulationEnd, cashFlows, setSavedScenarios]);
+    gate(() => {
+      const updated: SavedScenario = {
+        id: activeScenarioId,
+        name: activeScenario?.name ?? 'Scenario',
+        startingBalance: 0,
+        simulationEnd,
+        cashFlows: [...cashFlows],
+      };
+      setSavedScenarios((prev) =>
+        prev.map((s) => (s.id === activeScenarioId ? updated : s)),
+      );
+      if (user) saveScenario(user.uid, updated).catch((e) => console.error('[scenarios] save failed:', e));
+    });
+  }, [user, gate, activeScenarioId, activeScenario, simulationEnd, cashFlows, setSavedScenarios]);
 
   const handleLoadScenario = useCallback(
     (id: string) => {
@@ -853,7 +856,7 @@ export function PortfolioSimulatorPage() {
             {!user && (
               <button
                 className="ps-login-prompt"
-                onClick={() => setShowLoginModal(true)}
+                onClick={() => gate(() => {})}
               >
                 🔒 Sign in to save scenarios to your account
               </button>
@@ -1107,7 +1110,7 @@ export function PortfolioSimulatorPage() {
       )}
 
       {/* Login Modal */}
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+      {showLoginModal && <LoginModal onClose={onLoginClose} onSuccess={onLoginSuccess} />}
     </div>
   );
 }

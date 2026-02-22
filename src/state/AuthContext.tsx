@@ -7,6 +7,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth, firebaseEnabled } from '../config/firebase';
+import { syncUserProfile } from '../services/userDataService';
 
 // ── Types ──
 
@@ -36,16 +37,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log('[auth] onAuthStateChanged →', firebaseUser?.email ?? 'null');
       setUser(firebaseUser);
       setLoading(false);
+      // Sync profile to Firestore on every login
+      if (firebaseUser) {
+        syncUserProfile(firebaseUser.uid, {
+          displayName: firebaseUser.displayName,
+          email: firebaseUser.email,
+          photoURL: firebaseUser.photoURL,
+        }).catch((e) =>
+          console.error('[auth] profile sync failed:', e),
+        );
+      }
     });
     return unsubscribe;
   }, []);
 
   const signInWithGoogle = async (): Promise<{ ok: boolean; message?: string }> => {
-    console.log('[auth] signInWithGoogle called, firebaseEnabled =', firebaseEnabled, ', auth =', !!auth);
-
     if (!firebaseEnabled || !auth) {
       return {
         ok: false,
@@ -58,12 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider.addScope('email');
       provider.addScope('profile');
 
-      console.log('[auth] calling signInWithPopup…');
       const result = await signInWithPopup(auth, provider);
-      console.log('[auth] ✅ success →', result.user.displayName, result.user.email);
+      void result; // consumed by onAuthStateChanged
       return { ok: true };
     } catch (error: unknown) {
-      console.error('[auth] ❌ signInWithPopup error:', error);
 
       const code = (error as { code?: string }).code ?? '';
       const raw  = (error as { message?: string }).message ?? '';

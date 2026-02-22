@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../state/CurrencyContext';
 import { useCalculator } from '../state/CalculatorContext';
 import { formatCurrency } from '../utils/currency';
+import { exportTakeHomePdf } from '../utils/exportPdf';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useAuthGate } from '../hooks/useAuthGate';
+import { LoginModal } from '../components/LoginModal';
 
 // ══════════════════════════════════════════════
 //  UK Tax/NI calculation engine (2025-26 rates)
@@ -175,6 +178,7 @@ export function TakeHomePayPage() {
   });
 
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
 
   const updateField = useCallback(<K extends keyof TakeHomePayData>(key: K, value: TakeHomePayData[K]) => {
     setData((prev) => ({ ...prev, [key]: value, lastModified: new Date().toISOString() }));
@@ -203,6 +207,7 @@ export function TakeHomePayPage() {
 
   return (
     <div className="page-container">
+      {showLogin && <LoginModal onClose={onLoginClose} onSuccess={onLoginSuccess} />}
       <div className="ps-page">
         {/* Header */}
         <div className="thp-header">
@@ -211,8 +216,10 @@ export function TakeHomePayPage() {
         </div>
 
         <div className="thp-layout">
-          {/* Input card */}
-          <div className="ps-card thp-input-card">
+          {/* Left column */}
+          <div className="thp-left-col">
+            {/* Input card */}
+            <div className="ps-card thp-input-card">
             {/* Region toggle */}
             <div className="thp-row">
               <label className="thp-label">Tax Region</label>
@@ -316,6 +323,91 @@ export function TakeHomePayPage() {
             </div>
           </div>
 
+            {/* Breakdown — collapsible, below input card */}
+            <div className="ps-card thp-breakdown-card">
+              <button className="thp-breakdown-toggle" onClick={() => setShowBreakdown(!showBreakdown)}>
+                <span>Tax &amp; NI Breakdown</span>
+                <span className={`thp-breakdown-chevron ${showBreakdown ? 'thp-breakdown-chevron--open' : ''}`}>▼</span>
+              </button>
+
+              {showBreakdown && (
+                <div className="thp-breakdown">
+                  <div className="thp-breakdown-section">
+                    <h4 className="thp-breakdown-heading">Income Tax ({data.region === 'scotland' ? 'Scotland' : 'England'})</h4>
+                    <div className="thp-breakdown-grid">
+                      <span className="thp-breakdown-cell thp-breakdown-cell--head">Band</span>
+                      <span className="thp-breakdown-cell thp-breakdown-cell--head">Rate</span>
+                      <span className="thp-breakdown-cell thp-breakdown-cell--head" style={{ textAlign: 'right' }}>Tax</span>
+                      {result.taxBands.map((b) => (
+                        <div className="thp-breakdown-band" key={b.name}>
+                          <span className="thp-breakdown-cell">{b.name}</span>
+                          <span className="thp-breakdown-cell">{b.rate}</span>
+                          <span className="thp-breakdown-cell" style={{ textAlign: 'right' }}>{formatCurrency(b.amount, currency.code)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="thp-breakdown-total">
+                      <span>Total Income Tax</span>
+                      <span>{formatCurrency(result.incomeTax, currency.code)}</span>
+                    </div>
+                  </div>
+
+                  <div className="thp-breakdown-section">
+                    <h4 className="thp-breakdown-heading">National Insurance (Class 1)</h4>
+                    <div className="thp-breakdown-grid">
+                      <span className="thp-breakdown-cell thp-breakdown-cell--head">Earnings Band</span>
+                      <span className="thp-breakdown-cell thp-breakdown-cell--head">Rate</span>
+                      <span className="thp-breakdown-cell thp-breakdown-cell--head" style={{ textAlign: 'right' }}>NI</span>
+                      {result.niBands.map((b) => (
+                        <div className="thp-breakdown-band" key={b.name}>
+                          <span className="thp-breakdown-cell">{b.name}</span>
+                          <span className="thp-breakdown-cell">{b.rate}</span>
+                          <span className="thp-breakdown-cell" style={{ textAlign: 'right' }}>{formatCurrency(b.amount, currency.code)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="thp-breakdown-total">
+                      <span>Total NI</span>
+                      <span>{formatCurrency(result.nationalInsurance, currency.code)}</span>
+                    </div>
+                  </div>
+
+                  <div className="thp-breakdown-section">
+                    <h4 className="thp-breakdown-heading">Summary</h4>
+                    <div className="thp-summary-rows">
+                      <div className="thp-summary-row">
+                        <span>Gross Salary</span>
+                        <span>{formatCurrency(result.grossAnnual, currency.code)}</span>
+                      </div>
+                      {result.pensionSacrifice > 0 && (
+                        <div className="thp-summary-row">
+                          <span>Salary Sacrifice</span>
+                          <span className="thp-kpi-value--sac">−{formatCurrency(result.pensionSacrifice, currency.code)}</span>
+                        </div>
+                      )}
+                      <div className="thp-summary-row">
+                        <span>Personal Allowance</span>
+                        <span>{formatCurrency(result.personalAllowance, currency.code)}</span>
+                      </div>
+                      <div className="thp-summary-row">
+                        <span>Income Tax</span>
+                        <span className="thp-kpi-value--tax">−{formatCurrency(result.incomeTax, currency.code)}</span>
+                      </div>
+                      <div className="thp-summary-row">
+                        <span>National Insurance</span>
+                        <span className="thp-kpi-value--ni">−{formatCurrency(result.nationalInsurance, currency.code)}</span>
+                      </div>
+                      <div className="thp-summary-row thp-summary-row--total">
+                        <span>Net Annual Pay</span>
+                        <span>{formatCurrency(result.netAnnual, currency.code)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Result card */}
           <div className="ps-card thp-result-card">
             <div className="thp-result-hero">
@@ -348,91 +440,19 @@ export function TakeHomePayPage() {
               )}
             </div>
 
-            {/* Breakdown toggle */}
-            <button className="thp-breakdown-toggle" onClick={() => setShowBreakdown(!showBreakdown)}>
-              {showBreakdown ? 'Hide Breakdown ▲' : 'Show Breakdown ▼'}
-            </button>
-
-            {showBreakdown && (
-              <div className="thp-breakdown">
-                <div className="thp-breakdown-section">
-                  <h4 className="thp-breakdown-heading">Income Tax ({data.region === 'scotland' ? 'Scotland' : 'England'})</h4>
-                  <div className="thp-breakdown-grid">
-                    <span className="thp-breakdown-cell thp-breakdown-cell--head">Band</span>
-                    <span className="thp-breakdown-cell thp-breakdown-cell--head">Rate</span>
-                    <span className="thp-breakdown-cell thp-breakdown-cell--head" style={{ textAlign: 'right' }}>Tax</span>
-                    {result.taxBands.map((b) => (
-                      <div className="thp-breakdown-band" key={b.name}>
-                        <span className="thp-breakdown-cell">{b.name}</span>
-                        <span className="thp-breakdown-cell">{b.rate}</span>
-                        <span className="thp-breakdown-cell" style={{ textAlign: 'right' }}>{formatCurrency(b.amount, currency.code)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="thp-breakdown-total">
-                    <span>Total Income Tax</span>
-                    <span>{formatCurrency(result.incomeTax, currency.code)}</span>
-                  </div>
-                </div>
-
-                <div className="thp-breakdown-section">
-                  <h4 className="thp-breakdown-heading">National Insurance (Class 1)</h4>
-                  <div className="thp-breakdown-grid">
-                    <span className="thp-breakdown-cell thp-breakdown-cell--head">Earnings Band</span>
-                    <span className="thp-breakdown-cell thp-breakdown-cell--head">Rate</span>
-                    <span className="thp-breakdown-cell thp-breakdown-cell--head" style={{ textAlign: 'right' }}>NI</span>
-                    {result.niBands.map((b) => (
-                      <div className="thp-breakdown-band" key={b.name}>
-                        <span className="thp-breakdown-cell">{b.name}</span>
-                        <span className="thp-breakdown-cell">{b.rate}</span>
-                        <span className="thp-breakdown-cell" style={{ textAlign: 'right' }}>{formatCurrency(b.amount, currency.code)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="thp-breakdown-total">
-                    <span>Total NI</span>
-                    <span>{formatCurrency(result.nationalInsurance, currency.code)}</span>
-                  </div>
-                </div>
-
-                <div className="thp-breakdown-section">
-                  <h4 className="thp-breakdown-heading">Summary</h4>
-                  <div className="thp-summary-rows">
-                    <div className="thp-summary-row">
-                      <span>Gross Salary</span>
-                      <span>{formatCurrency(result.grossAnnual, currency.code)}</span>
-                    </div>
-                    {result.pensionSacrifice > 0 && (
-                      <div className="thp-summary-row">
-                        <span>Salary Sacrifice</span>
-                        <span className="thp-kpi-value--sac">−{formatCurrency(result.pensionSacrifice, currency.code)}</span>
-                      </div>
-                    )}
-                    <div className="thp-summary-row">
-                      <span>Personal Allowance</span>
-                      <span>{formatCurrency(result.personalAllowance, currency.code)}</span>
-                    </div>
-                    <div className="thp-summary-row">
-                      <span>Income Tax</span>
-                      <span className="thp-kpi-value--tax">−{formatCurrency(result.incomeTax, currency.code)}</span>
-                    </div>
-                    <div className="thp-summary-row">
-                      <span>National Insurance</span>
-                      <span className="thp-kpi-value--ni">−{formatCurrency(result.nationalInsurance, currency.code)}</span>
-                    </div>
-                    <div className="thp-summary-row thp-summary-row--total">
-                      <span>Net Annual Pay</span>
-                      <span>{formatCurrency(result.netAnnual, currency.code)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* See how much you can save CTA */}
-            <button className="thp-cta" onClick={handleSeeHowMuch}>
-               See how much you can save →
-            </button>
+            {/* Action buttons */}
+            <div className="thp-actions">
+              <button className="thp-cta" onClick={handleSeeHowMuch}>
+                 See how much you can save →
+              </button>
+              <button
+                className="thp-export-btn"
+                onClick={() => gate(() => exportTakeHomePdf(result, data.region, currency.symbol))}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export PDF Report
+              </button>
+            </div>
           </div>
         </div>
       </div>

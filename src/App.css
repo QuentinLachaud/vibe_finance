@@ -74,6 +74,14 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Smooth 2-second theme transition */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 2s ease, color 2s ease, border-color 2s ease, box-shadow 2s ease, fill 2s ease, stroke 2s ease !important;
+}
+
 body {
   min-height: 100vh;
 }
@@ -120,19 +128,36 @@ body {
 .header-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   flex-shrink: 0;
-}
-
-.logo-icon {
-  font-size: 24px;
 }
 
 .logo-text {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-primary);
   white-space: nowrap;
+  letter-spacing: -0.3px;
+}
+
+.logo-tld {
+  font-weight: 500;
+  color: var(--accent-primary);
+}
+
+/* Header SVG icons */
+.icon-gear,
+.icon-sun,
+.icon-moon {
+  display: block;
+  color: var(--text-secondary);
+  transition: color 0.15s;
+}
+
+.nav-link--settings:hover .icon-gear,
+.theme-toggle:hover .icon-sun,
+.theme-toggle:hover .icon-moon {
+  color: var(--text-primary);
 }
 
 .header-nav {
@@ -1473,6 +1498,50 @@ body {
 .ci-table-card {
   padding: 0;
   overflow: hidden;
+}
+
+/* Full-width table card below grid */
+.ci-table-card--full {
+  margin-top: 24px;
+}
+
+.ci-table-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 16px;
+  flex-shrink: 0;
+}
+
+.ci-export-group {
+  display: flex;
+  gap: 6px;
+}
+
+.ci-export-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.ci-export-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-color-light);
+}
+
+.ci-export-btn svg {
+  flex-shrink: 0;
 }
 
 .ci-table-toggle {
@@ -3125,6 +3194,14 @@ body {
   color: var(--text-primary);
 }
 
+/* ── Loading Coin Wrapper (Suspense fallback) ── */
+.loading-coin-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
 /* ── Gold Coin Loader ── */
 .rp-coin-loader {
   display: flex;
@@ -4013,6 +4090,13 @@ body {
   }
 }
 
+/* Left column wraps input card + breakdown card */
+.thp-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 /* Input card */
 .thp-input-card {
   display: flex;
@@ -4285,24 +4369,43 @@ body {
   color: #3b82f6;
 }
 
+/* Breakdown card */
+.thp-breakdown-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  overflow: hidden;
+}
+
 /* Breakdown toggle */
 .thp-breakdown-toggle {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
   color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  text-align: center;
   transition: background 0.15s, color 0.15s;
-  width: 100%;
 }
 
 .thp-breakdown-toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.thp-breakdown-chevron {
+  font-size: 10px;
+  transition: transform 0.25s ease;
+}
+
+.thp-breakdown-chevron--open {
+  transform: rotate(180deg);
 }
 
 /* Breakdown detail */
@@ -4310,6 +4413,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding: 0 20px 20px;
 }
 
 .thp-breakdown-section {
@@ -4410,6 +4514,41 @@ body {
 
 .thp-cta:active {
   transform: scale(0.98);
+}
+
+/* Actions row */
+.thp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Export PDF button */
+.thp-export-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 20px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.thp-export-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-color-light);
+}
+
+.thp-export-btn svg {
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════════════
