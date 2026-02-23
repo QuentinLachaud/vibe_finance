@@ -203,6 +203,8 @@ export function TakeHomePayPage() {
     dispatch({ type: 'SET_INCOME', payload: result.netMonthly });
     dispatch({ type: 'SET_INCOME_FREQUENCY', payload: 'monthly' });
     navigate('/calculator');
+    // On mobile, scroll to top after navigation
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   };
 
   return (

@@ -15,7 +15,7 @@ export function IncomeSection() {
     <div className="sc-income">
       <div className="sc-income-top">
         <span className="sc-income-label">
-          {isMonthly ? 'Monthly Income' : 'Annual Income'}
+          {isMonthly ? 'Monthly Net Income' : 'Annual Net Income'}
         </span>
         <div className="sc-freq-toggle">
           <button
