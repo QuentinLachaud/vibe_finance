@@ -26,7 +26,7 @@ type ReportFormat = 'html' | 'csv' | 'pdf';
 // ── Constants ──
 
 const NUM_PATHS = 500;
-const VOLATILITY = 12;
+const VOLATILITY = 15;
 
 const COLOR_VIOLET = '#8b5cf6';
 const COLOR_EMERALD = '#10b981';

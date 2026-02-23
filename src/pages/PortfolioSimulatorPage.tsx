@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, useTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
@@ -15,6 +15,7 @@ import { CashFlowCard } from '../components/portfolio/CashFlowCard';
 import { MonteCarloChart } from '../components/portfolio/MonteCarloChart';
 import { TimelineView } from '../components/portfolio/TimelineView';
 import { LoginModal } from '../components/LoginModal';
+import { LoadingCoin } from '../components/LoadingCoin';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { TrashIcon, EditIcon } from '../components/Icons';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -505,8 +506,6 @@ export function PortfolioSimulatorPage() {
 
   // ── UI state (not persisted) ──
   const [cashFlowFilter, setCashFlowFilter] = useState<'all' | 'deposits' | 'withdrawals'>('all');
-  const [volatility] = useState(12);
-  const numPaths = 500;
   const [showForm, setShowForm] = useState(false);
   const [editingCashFlow, setEditingCashFlow] = useState<CashFlow | null>(null);
   const [isCashFlowFormDirty, setIsCashFlowFormDirty] = useState(false);
@@ -523,6 +522,20 @@ export function PortfolioSimulatorPage() {
   const [renameValue, setRenameValue] = useState('');
   const [savedLabels, setSavedLabels] = usePersistedState<string[]>('vf-ps-labels', []);
   const [deleteScenarioId, setDeleteScenarioId] = useState<string | null>(null);
+
+  // ── Advanced settings (persisted) ──
+  const DEFAULT_VOLATILITY = 15; // S&P 500 long-run annualised volatility ~15%
+  const SIM_OPTIONS = [500, 1000, 2500, 5000, 10000] as const;
+  const [volatility, setVolatility] = usePersistedState<number>('vf-ps-volatility', DEFAULT_VOLATILITY);
+  const [numPaths, setNumPaths] = usePersistedState<number>('vf-ps-num-paths', 500);
+  const [showAllPaths, setShowAllPaths] = usePersistedState<boolean>('vf-ps-show-all-paths', false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showVolatilityWarning, setShowVolatilityWarning] = useState(false);
+  const [pendingVolatility, setPendingVolatility] = useState<number | null>(null);
+
+  // ── Simulation loading state ──
+  const [isSimulating, setIsSimulating] = useState(false);
+  const simulationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Derived ──
   const activeScenario = savedScenarios.find((s) => s.id === activeScenarioId) ?? null;
@@ -561,17 +574,39 @@ export function PortfolioSimulatorPage() {
     return () => { cancelled = true; };
   }, [user, setSavedScenarios]);
 
-  // ── Simulation ──
-  const result: SimulationResult | null = useMemo(() => {
-    if (cashFlows.length === 0) return null;
-    return runSimulation({
-      startingBalance: 0,
-      cashFlows,
-      volatility,
-      numPaths,
-      endOverride: simulationEnd,
-    });
-  }, [cashFlows, volatility, numPaths, simulationEnd]);
+  // ── Simulation (with loading spinner) ──
+  const [result, setResult] = useState<SimulationResult | null>(null);
+  const prevInputsRef = useRef<string>('');
+
+  useEffect(() => {
+    if (cashFlows.length === 0) {
+      setResult(null);
+      return;
+    }
+    const inputKey = JSON.stringify({ cashFlows, volatility, numPaths, simulationEnd, showAllPaths });
+    if (inputKey === prevInputsRef.current) return;
+    prevInputsRef.current = inputKey;
+
+    setIsSimulating(true);
+    // Run in next tick so the loading spinner renders
+    if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
+    simulationTimerRef.current = setTimeout(() => {
+      const res = runSimulation({
+        startingBalance: 0,
+        cashFlows,
+        volatility,
+        numPaths,
+        endOverride: simulationEnd,
+        returnAllPaths: showAllPaths,
+      });
+      setResult(res);
+      setIsSimulating(false);
+    }, 50);
+
+    return () => {
+      if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
+    };
+  }, [cashFlows, volatility, numPaths, simulationEnd, showAllPaths]);
 
   // ── Scenario handlers ──
   const handleSaveAs = useCallback(
@@ -971,6 +1006,71 @@ export function PortfolioSimulatorPage() {
               )}
             </div>
 
+            {/* ── Advanced Settings ── */}
+            <button
+              className="ps-advanced-toggle"
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              <span>⚙️ Advanced Settings</span>
+              <span className={`ps-table-arrow ${showAdvanced ? 'ps-table-arrow--open' : ''}`}>▼</span>
+            </button>
+
+            {showAdvanced && (
+              <div className="ps-advanced-panel">
+                {/* Volatility */}
+                <div className="ps-field">
+                  <label className="ps-label">
+                    Annual Volatility
+                    <span className="ps-label-hint">S&P 500 long-run ≈ 15%</span>
+                  </label>
+                  <NumericInput
+                    value={volatility}
+                    onChange={(v) => {
+                      if (v !== DEFAULT_VOLATILITY) {
+                        setPendingVolatility(v);
+                        setShowVolatilityWarning(true);
+                      } else {
+                        setVolatility(v);
+                      }
+                    }}
+                    suffix="%"
+                    ariaLabel="Annual volatility"
+                    min={1}
+                    max={50}
+                  />
+                </div>
+
+                {/* Number of Simulations */}
+                <div className="ps-field">
+                  <label className="ps-label">Simulation Paths</label>
+                  <div className="ps-sim-options">
+                    {SIM_OPTIONS.map((n) => (
+                      <button
+                        key={n}
+                        className={`ps-sim-option ${numPaths === n ? 'ps-sim-option--active' : ''}`}
+                        onClick={() => setNumPaths(n)}
+                      >
+                        {n.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Show All Paths toggle */}
+                <div className="ps-field ps-field--row">
+                  <label className="ps-label">Show All Paths on Chart</label>
+                  <button
+                    className={`ps-toggle-switch ${showAllPaths ? 'ps-toggle-switch--on' : ''}`}
+                    onClick={() => setShowAllPaths(!showAllPaths)}
+                    aria-label="Toggle show all paths"
+                  >
+                    <div className="ps-toggle-switch-track" />
+                    <div className="ps-toggle-switch-thumb" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button
               className="ps-btn ps-btn--gold ps-btn--full"
               onClick={handleAddCashFlow}
@@ -1040,7 +1140,14 @@ export function PortfolioSimulatorPage() {
         </div>
 
         {/* ════════ RIGHT COLUMN ════════ */}
-        <div className="ps-right">
+        <div className="ps-right" style={{ position: 'relative' }}>
+          {/* Loading overlay */}
+          {isSimulating && (
+            <div className="ps-sim-loading-overlay">
+              <LoadingCoin text="Simulating…" />
+            </div>
+          )}
+
           {/* Results Summary */}
           {result && (
             <div className="ps-card ps-results-card">
@@ -1064,6 +1171,16 @@ export function PortfolioSimulatorPage() {
                     {formatCurrency(result.finalP25, currency.code)}
                   </span>
                 </div>
+                <div className="ps-result-item ps-result-item--full">
+                  <span className="ps-result-label">Survival Rate</span>
+                  <span className={`ps-survival-badge ${
+                    result.survivalRate >= 95 ? 'ps-survival-badge--green' :
+                    result.survivalRate >= 80 ? 'ps-survival-badge--yellow' :
+                    'ps-survival-badge--red'
+                  }`}>
+                    {result.survivalRate.toFixed(1)}%
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -1075,6 +1192,7 @@ export function PortfolioSimulatorPage() {
                 data={result.timeSteps}
                 result={result}
                 currencyCode={currency.code}
+                showAllPaths={showAllPaths}
               />
             </div>
           )}
@@ -1179,6 +1297,28 @@ export function PortfolioSimulatorPage() {
             setDeleteScenarioId(null);
           }}
         />
+      )}
+
+      {/* Volatility Warning */}
+      {showVolatilityWarning && (
+        <div className="confirm-overlay" onClick={() => { setShowVolatilityWarning(false); setPendingVolatility(null); }}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p className="confirm-message" style={{ fontWeight: 600, fontSize: 15 }}>⚠️ Adjust Volatility?</p>
+            <p className="confirm-detail" style={{ fontSize: 13, opacity: 0.8, marginTop: 6, lineHeight: 1.5 }}>
+              Changing volatility from the default ({DEFAULT_VOLATILITY}%) will significantly affect simulation
+              results. Only change this if you understand how standard deviation of returns impacts
+              Monte Carlo projections.
+            </p>
+            <div className="confirm-actions">
+              <button className="confirm-btn confirm-btn--cancel" onClick={() => { setShowVolatilityWarning(false); setPendingVolatility(null); }}>
+                Cancel
+              </button>
+              <button className="confirm-btn confirm-btn--save" onClick={() => { if (pendingVolatility !== null) setVolatility(pendingVolatility); setShowVolatilityWarning(false); setPendingVolatility(null); }}>
+                I Understand
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Login Modal */}

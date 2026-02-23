@@ -57,6 +57,8 @@ export interface SimulationResult {
   finalDistribution: number[];
   /** % of paths that ended with value > 0. */
   survivalRate: number;
+  /** Raw simulation paths (sampled at timeStep intervals) for "see all paths" view. */
+  allPaths?: number[][];
 }
 
 // ── Helpers ──
@@ -152,7 +154,8 @@ function getSimulationRange(cashFlows: CashFlow[], endOverride?: string): {
 
 /**
  * For a given month (absolute), compute net cash flow from all cash flows.
- * Returns the sum of deposits/withdrawals applying that month.
+ * Recurring amounts are compounded by their growthRate from the start date.
+ * e.g. £50,000/year withdrawal with 3% annual increase → grows each year.
  */
 function monthlyCashFlowAt(absMonth: number, cashFlows: CashFlow[]): number {
   let flow = 0;
@@ -174,19 +177,26 @@ function monthlyCashFlowAt(absMonth: number, cashFlows: CashFlow[]): number {
 
     if (absMonth < sStartAbs || absMonth > sEndAbs) continue;
 
+    // Lump sum at start date
     if (absMonth === sStartAbs && s.startingValue && s.startingValue > 0) {
       flow += s.type === 'recurring-withdrawal' ? -s.startingValue : s.startingValue;
     }
 
+    // Compound the periodic amount by growthRate (annual increase).
+    // Years elapsed since start determines the compounded amount.
+    const monthsElapsed = absMonth - sStartAbs;
+    const yearsElapsed = monthsElapsed / 12;
+    const annualGrowth = (s.growthRate ?? 0) / 100;
+    const compoundedAmount = s.amount * Math.pow(1 + annualGrowth, yearsElapsed);
+
     if (s.frequency === 'monthly') {
-      // Apply every month in range
-      flow += s.type === 'recurring-withdrawal' ? -s.amount : s.amount;
+      flow += s.type === 'recurring-withdrawal' ? -compoundedAmount : compoundedAmount;
     } else {
       // Annually: apply on the anniversary month
       const monthInYear = absMonth % 12;
       const startMonthInYear = sStartAbs % 12;
       if (monthInYear === startMonthInYear) {
-        flow += s.type === 'recurring-withdrawal' ? -s.amount : s.amount;
+        flow += s.type === 'recurring-withdrawal' ? -compoundedAmount : compoundedAmount;
       }
     }
   }
@@ -237,8 +247,8 @@ function blendedMonthlyReturn(
 /**
  * Run Monte Carlo simulation.
  */
-export function runSimulation(inputs: SimulationInputs): SimulationResult {
-  const { startingBalance, cashFlows: allCashFlows, volatility, numPaths, endOverride } = inputs;
+export function runSimulation(inputs: SimulationInputs & { returnAllPaths?: boolean }): SimulationResult {
+  const { startingBalance, cashFlows: allCashFlows, volatility, numPaths, endOverride, returnAllPaths } = inputs;
   const cashFlows = allCashFlows.filter(s => s.enabled);
   const monthlyVol = volatility / 100 / Math.sqrt(12);
 
@@ -317,6 +327,14 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
   const finalValues = paths.map((path) => path[totalMonths]).sort((a, b) => a - b);
   const survived = finalValues.filter((v) => v > 0).length;
 
+  // Build sampled paths for "see all paths" view (sample at same intervals as timeSteps)
+  let allPathsSampled: number[][] | undefined;
+  if (returnAllPaths) {
+    allPathsSampled = paths.map((path) =>
+      timeSteps.map((ts) => path[Math.min(ts.monthIndex, totalMonths)])
+    );
+  }
+
   return {
     timeSteps,
     finalMedian: Math.round(percentile(finalValues, 50)),
@@ -326,6 +344,7 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
     finalP90: Math.round(percentile(finalValues, 90)),
     finalDistribution: finalValues,
     survivalRate: Math.round((survived / finalValues.length) * 100),
+    allPaths: allPathsSampled,
   };
 }
 

@@ -13,6 +13,8 @@ import {
   Cell,
   ReferenceLine,
   Label,
+  Line,
+  ComposedChart,
 } from 'recharts';
 import { formatCurrency } from '../../utils/currency';
 import type { TimeStep, SimulationResult } from '../../utils/simulationEngine';
@@ -22,6 +24,7 @@ interface MonteCarloChartProps {
   data: TimeStep[];
   result: SimulationResult;
   currencyCode: CurrencyCode;
+  showAllPaths?: boolean;
 }
 
 // ── Distinct color palette for high contrast ──
@@ -186,22 +189,31 @@ function DistributionView({
   );
 }
 
-export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartProps) {
+export function MonteCarloChart({ data, result, currencyCode, showAllPaths = false }: MonteCarloChartProps) {
   const [flipped, setFlipped] = useState(false);
   const [hoveredLabel, setHoveredLabel] = useState('');
 
   // Pre-compute stacked band data for correct layering
-  const chartData = useMemo(
-    () =>
-      data.map((d) => ({
+  const chartData = useMemo(() => {
+    const allPaths = result.allPaths;
+    return data.map((d, i) => {
+      const row: Record<string, any> = {
         ...d,
         p10_base: d.p10,
         band_10_25: Math.max(0, d.p25 - d.p10),
         band_25_75: Math.max(0, d.p75 - d.p25),
         band_75_90: Math.max(0, d.p90 - d.p75),
-      })),
-    [data],
-  );
+      };
+      if (showAllPaths && allPaths) {
+        for (let p = 0; p < allPaths.length; p++) {
+          row[`path_${p}`] = allPaths[p]?.[i] ?? null;
+        }
+      }
+      return row;
+    });
+  }, [data, result.allPaths, showAllPaths]);
+
+  const pathCount = showAllPaths && result.allPaths ? result.allPaths.length : 0;
 
   const handleMouseMove = useCallback((state: any) => {
     if (state?.activeLabel) {
@@ -217,25 +229,34 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
       <div className="ps-flip-face ps-flip-face--front">
         <div className="ps-flip-header">
           <h2 className="ps-card-title">Monte Carlo Simulation</h2>
-          <button className="ps-flip-btn" onClick={() => setFlipped(true)} title="Show outcome distribution">
-            📊 Distribution
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className={`ps-survival-badge ps-survival-badge--chart ${
+              result.survivalRate >= 95 ? 'ps-survival-badge--green' :
+              result.survivalRate >= 80 ? 'ps-survival-badge--yellow' :
+              'ps-survival-badge--red'
+            }`}>
+              {result.survivalRate.toFixed(0)}% survive
+            </span>
+            <button className="ps-flip-btn" onClick={() => setFlipped(true)} title="Show outcome distribution">
+              📊 Distribution
+            </button>
+          </div>
         </div>
         <div className="ps-chart-container">
           <ResponsiveContainer width="100%" height={380}>
-            <AreaChart
+            <ComposedChart
               data={chartData}
               margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
               onMouseMove={handleMouseMove}
             >
               <defs>
                 <linearGradient id="outerBandGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={COLOR_OUTER} stopOpacity={0.4} />
-                  <stop offset="100%" stopColor={COLOR_OUTER} stopOpacity={0.08} />
+                  <stop offset="0%" stopColor={COLOR_OUTER} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={COLOR_OUTER} stopOpacity={0.05} />
                 </linearGradient>
                 <linearGradient id="innerBandGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={COLOR_INNER} stopOpacity={0.5} />
-                  <stop offset="100%" stopColor={COLOR_INNER} stopOpacity={0.12} />
+                  <stop offset="0%" stopColor={COLOR_INNER} stopOpacity={0.45} />
+                  <stop offset="100%" stopColor={COLOR_INNER} stopOpacity={0.08} />
                 </linearGradient>
               </defs>
 
@@ -262,8 +283,22 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
 
               <Tooltip
                 content={<ChartTooltip currencyCode={currencyCode} />}
-                cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
+                cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1 }}
               />
+
+              {/* Individual simulation paths (behind bands) */}
+              {showAllPaths && Array.from({ length: pathCount }, (_, p) => (
+                <Line
+                  key={`path_${p}`}
+                  dataKey={`path_${p}`}
+                  stroke="rgba(139, 92, 246, 0.08)"
+                  strokeWidth={0.5}
+                  dot={false}
+                  legendType="none"
+                  isAnimationActive={false}
+                  connectNulls
+                />
+              ))}
 
               {/* Invisible base up to p10 */}
               <Area
@@ -319,7 +354,7 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
               <Legend
                 wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
               />
-            </AreaChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
