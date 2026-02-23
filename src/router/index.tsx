@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../app/AppLayout';
 import { LoadingCoin } from '../components/LoadingCoin';
+import { LandingPage } from '../pages/LandingPage';
 import { CalculatorPage } from '../pages/CalculatorPage';
 import { TakeHomePayPage } from '../pages/TakeHomePayPage';
 
@@ -30,11 +31,12 @@ export const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { path: '/', element: <CalculatorPage /> },
+      { path: '/', element: <LandingPage /> },
+      { path: '/calculator', element: <CalculatorPage /> },
       { path: '/compound-interest', element: <Lazy><CompoundInterestPage /></Lazy> },
       { path: '/take-home-pay', element: <TakeHomePayPage /> },
       { path: '/net-worth', element: <Lazy><NetWorthPage /></Lazy> },
-      { path: '/retirement', element: <Navigate to="/" replace /> },
+      { path: '/retirement', element: <Navigate to="/calculator" replace /> },
       { path: '/portfolio', element: <Lazy><PortfolioSimulatorPage /></Lazy> },
       { path: '/reports', element: <Lazy><ReportsPage /></Lazy> },
       { path: '/settings', element: <Lazy><SettingsPage /></Lazy> },

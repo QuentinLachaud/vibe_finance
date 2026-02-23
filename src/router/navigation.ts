@@ -7,7 +7,7 @@ export type PageNavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Take Home Pay', path: '/take-home-pay' },
-  { label: 'Savings Calculator', path: '/' },
+  { label: 'Savings Calculator', path: '/calculator' },
   { label: 'Compound Interest', path: '/compound-interest' },
   { label: 'Net Worth', path: '/net-worth' },
   { label: 'Portfolio Simulator', path: '/portfolio', isGold: true },

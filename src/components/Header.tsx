@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
@@ -8,11 +8,9 @@ import { LoginModal } from './LoginModal';
 import type { CurrencyCode } from '../types';
 import type { User } from 'firebase/auth';
 
-function UserMenu({ user, onClose }: { user: User; onClose: () => void }) {
-  const { logout } = useAuth();
-
+function UserMenu({ user, onClose, onSignOut }: { user: User; onClose: () => void; onSignOut: () => void }) {
   const handleSignOut = async () => {
-    await logout();
+    onSignOut();
     onClose();
   };
 
@@ -30,7 +28,8 @@ function UserMenu({ user, onClose }: { user: User; onClose: () => void }) {
 export function Header() {
   const { theme, toggleTheme } = useTheme();
   const { currency, setCurrency } = useCurrency();
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
+  const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -88,9 +87,9 @@ export function Header() {
     <header className="app-header">
       <div className="header-inner">
         {/* Logo */}
-        <div className="header-logo">
+        <Link to="/" className="header-logo">
           <span className="logo-text">TakeHomeCalc<span className="logo-tld">.co.uk</span></span>
-        </div>
+        </Link>
 
         {/* Hamburger toggle (mobile only) */}
         <button
@@ -195,7 +194,14 @@ export function Header() {
                   </button>
                 )}
                 {showMenu && (
-                  <UserMenu user={user} onClose={() => setShowMenu(false)} />
+                  <UserMenu
+                    user={user}
+                    onClose={() => setShowMenu(false)}
+                    onSignOut={async () => {
+                      await logout();
+                      navigate('/');
+                    }}
+                  />
                 )}
               </div>
             ) : (
