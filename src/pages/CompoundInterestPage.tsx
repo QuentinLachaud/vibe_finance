@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart,
   Bar,
@@ -182,6 +183,7 @@ export function CompoundInterestPage() {
   const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
 
   // Load persisted values (or fallback to defaults)
+  const navigate = useNavigate();
   const saved = useMemo(() => loadCIState(), []);
 
   // Inputs
@@ -524,46 +526,6 @@ export function CompoundInterestPage() {
             </button>
           </div>
 
-          {/* ── Result Detail Cards (below left) ── */}
-          {result && (
-            <div className="ci-detail-cards">
-              <div className="ci-detail-card">
-                <div className="ci-detail-icon">📈</div>
-                <div className="ci-detail-label">Future Value</div>
-                <AnimatedValue
-                  value={formatCurrency(result.futureValue, currency.code)}
-                  className="ci-detail-value--green"
-                />
-              </div>
-              <div className="ci-detail-card">
-                <div className="ci-detail-icon">💰</div>
-                <div className="ci-detail-label">Total Interest</div>
-                <AnimatedValue
-                  value={formatCurrency(result.totalInterest, currency.code)}
-                  className="ci-detail-value--yellow"
-                />
-              </div>
-              {isWithdrawal ? (
-                <div className="ci-detail-card">
-                  <div className="ci-detail-icon">📤</div>
-                  <div className="ci-detail-label">Total Withdrawn</div>
-                  <AnimatedValue
-                    value={formatCurrency(result.totalWithdrawals, currency.code)}
-                    className="ci-detail-value--red"
-                  />
-                </div>
-              ) : (
-                <div className="ci-detail-card">
-                  <div className="ci-detail-icon">💼</div>
-                  <div className="ci-detail-label">Total Deposits</div>
-                  <AnimatedValue
-                    value={formatCurrency(result.totalDeposits, currency.code)}
-                    className="ci-detail-value--purple"
-                  />
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* ════════ RIGHT COLUMN ════════ */}
@@ -805,6 +767,15 @@ export function CompoundInterestPage() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* CTA: bridge to portfolio simulator */}
+      {result && (
+        <div className="ci-simulate-cta">
+          <button className="thp-cta" onClick={() => navigate('/portfolio')}>
+            Build Your Future Scenarios →
+          </button>
         </div>
       )}
     </div>
