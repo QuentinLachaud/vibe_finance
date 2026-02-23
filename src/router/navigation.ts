@@ -1,4 +1,4 @@
-import type { NavItem } from '../types';
+import type { NavItem } from '../types/index';
 
 export type PageNavItem = {
   label: string;
