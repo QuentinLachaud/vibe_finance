@@ -201,15 +201,18 @@ export function ExpensesSection() {
             </div>
           )}
 
-          <div className="expense-add-row">
-            <span className="currency-prefix-sm">{currency.symbol}</span>
-            <NumberInput
-              value={addAmount}
-              onChange={(val) => setAddAmount(val ?? 0)}
-              min={0}
-              step={10}
-              hideControls
-              size="sm"
+          <div className="expense-add-row expense-add-amount-row">
+            <span className="expense-add-currency">{currency.symbol}</span>
+            <input
+              className="expense-add-amount-input"
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={addAmount || ''}
+              onChange={(e) => {
+                const v = Number(e.target.value.replace(/,/g, ''));
+                if (!isNaN(v)) setAddAmount(v);
+              }}
             />
           </div>
 
