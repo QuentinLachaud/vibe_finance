@@ -24,7 +24,7 @@ interface MonteCarloChartProps {
   data: TimeStep[];
   result: SimulationResult;
   currencyCode: CurrencyCode;
-  showAllPaths?: boolean;
+  showAllPaths?: 'quartiles' | 'all' | 'both';
 }
 
 // ── Distinct color palette for high contrast ──
@@ -189,7 +189,7 @@ function DistributionView({
   );
 }
 
-export function MonteCarloChart({ data, result, currencyCode, showAllPaths = false }: MonteCarloChartProps) {
+export function MonteCarloChart({ data, result, currencyCode, showAllPaths = 'quartiles' }: MonteCarloChartProps) {
   const [flipped, setFlipped] = useState(false);
   const [hoveredLabel, setHoveredLabel] = useState('');
 
@@ -204,7 +204,8 @@ export function MonteCarloChart({ data, result, currencyCode, showAllPaths = fal
         band_25_75: Math.max(0, d.p75 - d.p25),
         band_75_90: Math.max(0, d.p90 - d.p75),
       };
-      if (showAllPaths && allPaths) {
+      const wantPaths = showAllPaths === 'all' || showAllPaths === 'both';
+      if (wantPaths && allPaths) {
         for (let p = 0; p < allPaths.length; p++) {
           row[`path_${p}`] = allPaths[p]?.[i] ?? null;
         }
@@ -213,7 +214,9 @@ export function MonteCarloChart({ data, result, currencyCode, showAllPaths = fal
     });
   }, [data, result.allPaths, showAllPaths]);
 
-  const pathCount = showAllPaths && result.allPaths ? result.allPaths.length : 0;
+  const wantPaths = showAllPaths === 'all' || showAllPaths === 'both';
+  const wantBands = showAllPaths === 'quartiles' || showAllPaths === 'both';
+  const pathCount = wantPaths && result.allPaths ? result.allPaths.length : 0;
 
   const handleMouseMove = useCallback((state: any) => {
     if (state?.activeLabel) {
@@ -287,7 +290,7 @@ export function MonteCarloChart({ data, result, currencyCode, showAllPaths = fal
               />
 
               {/* Individual simulation paths (behind bands) */}
-              {showAllPaths && Array.from({ length: pathCount }, (_, p) => (
+              {wantPaths && Array.from({ length: pathCount }, (_, p) => (
                 <Line
                   key={`path_${p}`}
                   dataKey={`path_${p}`}
@@ -301,44 +304,52 @@ export function MonteCarloChart({ data, result, currencyCode, showAllPaths = fal
               ))}
 
               {/* Invisible base up to p10 */}
-              <Area
-                dataKey="p10_base"
-                stackId="bands"
-                stroke="none"
-                fill="transparent"
-                legendType="none"
-                animationDuration={600}
-              />
+              {wantBands && (
+                <Area
+                  dataKey="p10_base"
+                  stackId="bands"
+                  stroke="none"
+                  fill="transparent"
+                  legendType="none"
+                  animationDuration={600}
+                />
+              )}
 
               {/* P10–P25: outer band (lower) — violet */}
-              <Area
-                dataKey="band_10_25"
-                stackId="bands"
-                stroke="none"
-                fill="url(#outerBandGrad)"
-                name="10th–90th"
-                animationDuration={600}
-              />
+              {wantBands && (
+                <Area
+                  dataKey="band_10_25"
+                  stackId="bands"
+                  stroke="none"
+                  fill="url(#outerBandGrad)"
+                  name="10th–90th"
+                  animationDuration={600}
+                />
+              )}
 
               {/* P25–P75: inner band — emerald */}
-              <Area
-                dataKey="band_25_75"
-                stackId="bands"
-                stroke="none"
-                fill="url(#innerBandGrad)"
-                name="25th–75th"
-                animationDuration={600}
-              />
+              {wantBands && (
+                <Area
+                  dataKey="band_25_75"
+                  stackId="bands"
+                  stroke="none"
+                  fill="url(#innerBandGrad)"
+                  name="25th–75th"
+                  animationDuration={600}
+                />
+              )}
 
               {/* P75–P90: outer band (upper) — violet */}
-              <Area
-                dataKey="band_75_90"
-                stackId="bands"
-                stroke="none"
-                fill="url(#outerBandGrad)"
-                legendType="none"
-                animationDuration={600}
-              />
+              {wantBands && (
+                <Area
+                  dataKey="band_75_90"
+                  stackId="bands"
+                  stroke="none"
+                  fill="url(#outerBandGrad)"
+                  legendType="none"
+                  animationDuration={600}
+                />
+              )}
 
               {/* Median line — bright cyan */}
               <Area

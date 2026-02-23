@@ -19,6 +19,7 @@ import { useAuth } from '../state/AuthContext';
 import { loadNetWorth, saveNetWorth } from '../services/userDataService';
 import { TrashIcon } from '../components/Icons';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
+import { LoadingCoin } from '../components/LoadingCoin';
 import type { CurrencyCode } from '../types';
 
 // ── Types ──
@@ -836,6 +837,151 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
   );
 }
 
+// ── Net Worth Report Generation ──
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+type NWReportFormat = 'html' | 'csv' | 'pdf';
+
+function generateNWCSV(assets: Asset[], code: CurrencyCode): string {
+  const fmt = (v: number) => formatCurrency(v, code);
+  const lines: string[] = [];
+
+  lines.push('Net Worth Report');
+  lines.push(`Generated,${new Date().toLocaleDateString('en-GB')}`);
+  lines.push('');
+
+  // Summary
+  const totalAssets = assets.filter(a => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
+  const totalDebts = assets.filter(a => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
+  const netWorth = totalAssets - totalDebts;
+  lines.push('Summary');
+  lines.push(`Total Assets,${fmt(totalAssets)}`);
+  lines.push(`Total Debts,${fmt(totalDebts)}`);
+  lines.push(`Net Worth,${fmt(netWorth)}`);
+  lines.push('');
+
+  // Asset details
+  lines.push('Assets & Liabilities');
+  lines.push('Name,Type,Latest Value,# Snapshots,Last Updated');
+  for (const a of assets) {
+    const latest = latestValue(a);
+    const lastSnap = a.snapshots.length ? [...a.snapshots].sort((x, y) => x.date.localeCompare(y.date)).pop()!.date : '';
+    lines.push(`"${a.name}",${a.type},${latest},${a.snapshots.length},${lastSnap}`);
+  }
+  lines.push('');
+
+  // History per asset
+  for (const a of assets) {
+    const sorted = [...a.snapshots].sort((x, y) => x.date.localeCompare(y.date));
+    lines.push(`History: ${a.name}`);
+    lines.push('Date,Value');
+    for (const s of sorted) {
+      lines.push(`${s.date},${s.value}`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
+  const fmt = (v: number) => formatCurrency(v, code);
+  const now = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const totalAssets = assets.filter(a => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
+  const totalDebts = assets.filter(a => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
+  const netWorth = totalAssets - totalDebts;
+
+  // Group by type
+  const byType = new Map<string, Asset[]>();
+  for (const a of assets) {
+    if (!byType.has(a.type)) byType.set(a.type, []);
+    byType.get(a.type)!.push(a);
+  }
+
+  const groupRows = Array.from(byType.entries()).map(([type, group]) => {
+    const gTotal = group.reduce((s, a) => s + latestValue(a), 0);
+    const assetRows = group.map(a => `
+      <tr>
+        <td>${a.emoji} ${a.name}</td>
+        <td class="num">${fmt(latestValue(a))}</td>
+        <td class="num">${a.snapshots.length}</td>
+      </tr>`).join('');
+    return `
+      <tr class="group-header"><td colspan="3">${type} — ${fmt(gTotal)}</td></tr>
+      ${assetRows}`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>Net Worth Report</title>
+<style>
+  @page { size: A4; margin: 20mm; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0b1120; color: #e2e8f0; line-height: 1.6; padding: 40px; }
+  .report-header { text-align: center; margin-bottom: 32px; }
+  .brand { font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #d4a843; margin-bottom: 4px; }
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+  .date { font-size: 12px; color: #94a3b8; }
+  .kpi-row { display: flex; gap: 16px; justify-content: center; margin: 24px 0; flex-wrap: wrap; }
+  .kpi { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px 24px; text-align: center; min-width: 140px; }
+  .kpi-value { font-size: 22px; font-weight: 700; display: block; }
+  .kpi-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; display: block; }
+  .section { margin-top: 32px; }
+  .section-badge { display: inline-block; background: rgba(212,168,67,0.15); color: #d4a843; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .group-header td { font-weight: 700; font-size: 14px; color: #d4a843; padding-top: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .neg { color: #ef4444; }
+  .pos { color: #10b981; }
+  .report-footer { text-align: center; margin-top: 40px; font-size: 11px; color: #64748b; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; }
+  @media print { body { background: white; color: #1e293b; } .kpi { border-color: #e2e8f0; } th { color: #64748b; border-color: #e2e8f0; } td { border-color: #f1f5f9; } .group-header td { color: #92400e; border-color: #e2e8f0; } .report-footer { color: #94a3b8; border-color: #e2e8f0; } }
+</style></head>
+<body>
+  <div class="report-header">
+    <div class="brand">Vibe Finance</div>
+    <h1>Net Worth Report</h1>
+    <div class="date">Generated ${now}</div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <span class="kpi-value pos">${fmt(totalAssets)}</span>
+      <span class="kpi-label">Total Assets</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-value neg">${fmt(totalDebts)}</span>
+      <span class="kpi-label">Total Debts</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-value" style="color:${netWorth >= 0 ? '#22d3ee' : '#ef4444'}">${fmt(netWorth)}</span>
+      <span class="kpi-label">Net Worth</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-badge">Breakdown</div>
+    <table>
+      <thead><tr><th>Asset / Liability</th><th class="num">Value</th><th class="num">Snapshots</th></tr></thead>
+      <tbody>${groupRows}</tbody>
+    </table>
+  </div>
+
+  <div class="report-footer">
+    Vibe Finance &middot; Net Worth Report &middot; ${assets.length} item${assets.length !== 1 ? 's' : ''}
+  </div>
+</body></html>`;
+}
+
 // ── Main Page ──
 
 export function NetWorthPage() {
@@ -876,6 +1022,32 @@ export function NetWorthPage() {
   const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
   const [historyAssetId, setHistoryAssetId] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
+
+  // Report state
+  const [showReportPicker, setShowReportPicker] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
+
+  const handleGenerateReport = useCallback((format: NWReportFormat) => {
+    setGeneratingReport(true);
+    setShowReportPicker(false);
+    setTimeout(() => {
+      try {
+        const timestamp = new Date().toISOString().slice(0, 10);
+        if (format === 'csv') {
+          downloadBlob(new Blob([generateNWCSV(assets, currency.code)], { type: 'text/csv' }), `net-worth-report-${timestamp}.csv`);
+        } else if (format === 'html') {
+          downloadBlob(new Blob([generateNWHTML(assets, currency.code)], { type: 'text/html' }), `net-worth-report-${timestamp}.html`);
+        } else if (format === 'pdf') {
+          const html = generateNWHTML(assets, currency.code);
+          const win = window.open('', '_blank');
+          if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500); }
+        }
+      } catch (e) {
+        console.error('Net worth report generation failed', e);
+      }
+      setGeneratingReport(false);
+    }, 100);
+  }, [assets, currency.code]);
 
   const totalNetWorth = useMemo(() => assets.reduce((sum, a) => sum + latestValue(a), 0), [assets]);
 
@@ -1173,6 +1345,50 @@ export function NetWorthPage() {
             );
           })}
         </div>
+
+        {/* Generate Report button */}
+        {assets.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0 8px' }}>
+            <button
+              className="ps-btn ps-btn--primary"
+              disabled={generatingReport}
+              onClick={() => setShowReportPicker(true)}
+            >
+              📄 Generate Net Worth Report
+            </button>
+          </div>
+        )}
+
+        {/* Report format picker */}
+        {showReportPicker && (
+          <div className="report-overlay" onClick={() => setShowReportPicker(false)}>
+            <div className="rp-format-picker" onClick={(e) => e.stopPropagation()}>
+              <h3 className="rp-format-title">Choose Report Format</h3>
+              <div className="rp-format-options">
+                <button className="rp-format-btn" onClick={() => handleGenerateReport('html')}>
+                  <span className="rp-format-icon">🌐</span>
+                  <div><span className="rp-format-label">HTML</span><span className="rp-format-desc">Rich styled report, viewable in any browser</span></div>
+                </button>
+                <button className="rp-format-btn" onClick={() => handleGenerateReport('pdf')}>
+                  <span className="rp-format-icon">📄</span>
+                  <div><span className="rp-format-label">PDF</span><span className="rp-format-desc">Print-ready via browser print dialog</span></div>
+                </button>
+                <button className="rp-format-btn" onClick={() => handleGenerateReport('csv')}>
+                  <span className="rp-format-icon">📊</span>
+                  <div><span className="rp-format-label">CSV</span><span className="rp-format-desc">Opens in Excel, Google Sheets, etc.</span></div>
+                </button>
+              </div>
+              <button className="rp-format-cancel" onClick={() => setShowReportPicker(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading overlay */}
+        {generatingReport && (
+          <div className="report-overlay">
+            <LoadingCoin text="Generating report…" />
+          </div>
+        )}
 
         {/* Delete confirmation */}
         {deleteConfirmId && deleteAsset && (

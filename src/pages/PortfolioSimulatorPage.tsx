@@ -528,7 +528,8 @@ export function PortfolioSimulatorPage() {
   const SIM_OPTIONS = [500, 1000, 2500, 5000, 10000] as const;
   const [volatility, setVolatility] = usePersistedState<number>('vf-ps-volatility', DEFAULT_VOLATILITY);
   const [numPaths, setNumPaths] = usePersistedState<number>('vf-ps-num-paths', 500);
-  const [showAllPaths, setShowAllPaths] = usePersistedState<boolean>('vf-ps-show-all-paths', false);
+  type PathDisplay = 'quartiles' | 'all' | 'both';
+  const [showAllPaths, setShowAllPaths] = usePersistedState<PathDisplay>('vf-ps-show-all-paths', 'quartiles');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showVolatilityWarning, setShowVolatilityWarning] = useState(false);
   const [pendingVolatility, setPendingVolatility] = useState<number | null>(null);
@@ -581,6 +582,8 @@ export function PortfolioSimulatorPage() {
   useEffect(() => {
     if (cashFlows.length === 0) {
       setResult(null);
+      setIsSimulating(false);
+      prevInputsRef.current = '';
       return;
     }
     const inputKey = JSON.stringify({ cashFlows, volatility, numPaths, simulationEnd, showAllPaths });
@@ -591,16 +594,19 @@ export function PortfolioSimulatorPage() {
     // Run in next tick so the loading spinner renders
     if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
     simulationTimerRef.current = setTimeout(() => {
-      const res = runSimulation({
-        startingBalance: 0,
-        cashFlows,
-        volatility,
-        numPaths,
-        endOverride: simulationEnd,
-        returnAllPaths: showAllPaths,
-      });
-      setResult(res);
-      setIsSimulating(false);
+      try {
+        const res = runSimulation({
+          startingBalance: 0,
+          cashFlows,
+          volatility,
+          numPaths,
+          endOverride: simulationEnd,
+          returnAllPaths: showAllPaths === 'all' || showAllPaths === 'both',
+        });
+        setResult(res);
+      } finally {
+        setIsSimulating(false);
+      }
     }, 50);
 
     return () => {
@@ -1056,17 +1062,20 @@ export function PortfolioSimulatorPage() {
                   </div>
                 </div>
 
-                {/* Show All Paths toggle */}
-                <div className="ps-field ps-field--row">
-                  <label className="ps-label">Show All Paths on Chart</label>
-                  <button
-                    className={`ps-toggle-switch ${showAllPaths ? 'ps-toggle-switch--on' : ''}`}
-                    onClick={() => setShowAllPaths(!showAllPaths)}
-                    aria-label="Toggle show all paths"
-                  >
-                    <div className="ps-toggle-switch-track" />
-                    <div className="ps-toggle-switch-thumb" />
-                  </button>
+                {/* Path display mode */}
+                <div className="ps-field">
+                  <label className="ps-label">Chart Display</label>
+                  <div className="ps-toggle">
+                    {(['quartiles', 'all', 'both'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        className={`ps-toggle-btn ${showAllPaths === mode ? 'ps-toggle-btn--active' : ''}`}
+                        onClick={() => setShowAllPaths(mode)}
+                      >
+                        {mode === 'quartiles' ? 'Quartiles' : mode === 'all' ? 'All Paths' : 'Both'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
