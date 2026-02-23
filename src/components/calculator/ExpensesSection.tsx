@@ -3,6 +3,7 @@ import { Button, NumberInput, TextInput } from '@quentinlachaud/app-component-li
 import { useCalculator } from '../../state/CalculatorContext';
 import { useCurrency } from '../../state/CurrencyContext';
 import { ConfirmDialog, useConfirmDialog } from './ConfirmDialog';
+import { TrashIcon } from '../Icons';
 
 const CATEGORY_ICONS: Record<string, string> = {
   Housing: '🏠',
@@ -121,7 +122,7 @@ export function ExpensesSection() {
               onClick={() => requestConfirm(expense.id)}
               aria-label={`Remove ${expense.name}`}
             >
-              🗑️
+              <TrashIcon size={14} />
             </button>
           </div>
         ))}

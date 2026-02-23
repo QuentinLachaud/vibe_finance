@@ -652,6 +652,9 @@ body {
   border-radius: 4px;
   opacity: 0;
   transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .expense-row:hover .expense-delete-btn {
@@ -2025,6 +2028,52 @@ body {
 
 .ps-btn--danger:hover {
   background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Icon-only variant for ps-btn */
+.ps-btn--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  line-height: 1;
+}
+
+.ps-btn--icon svg {
+  display: block;
+}
+
+/* ── Professional SVG icon styles for action buttons ── */
+.ps-scenario-action-btn svg,
+.expense-delete-btn svg {
+  display: block;
+}
+
+.ps-scenario-action-btn--delete:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* ── Report delete button ── */
+.rp-actions-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rp-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ef4444 !important;
+}
+
+.rp-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.rp-delete-btn svg {
+  flex-shrink: 0;
 }
 
 /* ── Login prompt inside scenario card ── */
@@ -3958,7 +4007,7 @@ body {
 .nw-flip-container {
   position: relative;
   width: 100%;
-  min-height: 380px;
+  min-height: 420px;
   perspective: 1200px;
 }
 
@@ -4191,38 +4240,46 @@ body {
   font-weight: 600;
 }
 
-.nw-debt-banner {
+/* Subtle inline debt note */
+.nw-debt-note {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 10px 16px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 10px;
-  margin-bottom: 8px;
+  gap: 2px;
+  margin-bottom: 4px;
+  padding-left: 2px;
 }
 
-.nw-debt-pct {
-  font-size: 22px;
-  font-weight: 800;
-  color: #ef4444;
-}
-
-.nw-debt-label {
+.nw-debt-note-pct {
   font-size: 13px;
-  color: var(--text-secondary);
+  font-weight: 700;
+  color: #f87171;
+}
+
+.nw-debt-note-label {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .nw-donut-chart-area {
-  min-height: 280px;
+  /* No min-height — let content size naturally */
 }
 
 .nw-donut-tooltip {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  padding: 12px 16px;
+  padding: 0;
   margin-top: 4px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+}
+
+.nw-donut-tooltip--visible {
+  max-height: 300px;
+  opacity: 1;
+  padding: 12px 16px;
 }
 
 .nw-donut-tooltip-title {
@@ -4270,6 +4327,270 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — View Toggle Buttons
+   ═══════════════════════════════════════════════ */
+
+.nw-chart-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.nw-view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.nw-view-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.nw-view-toggle-btn--active {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.3);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.nw-view-toggle-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — Donut Center Label
+   ═══════════════════════════════════════════════ */
+
+.nw-donut-chart-wrap {
+  position: relative;
+}
+
+.nw-donut-center-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 1;
+  max-width: 110px;
+}
+
+.nw-donut-center-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nw-donut-center-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — Improved Donut Tooltip
+   ═══════════════════════════════════════════════ */
+
+.nw-donut-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.nw-donut-tooltip-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.nw-donut-tooltip-total {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.nw-donut-tooltip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nw-donut-tooltip-item-name {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.nw-donut-tooltip-item-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nw-donut-tooltip-item-value--neg {
+  color: #ef4444;
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — Sort Bar
+   ═══════════════════════════════════════════════ */
+
+.nw-sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.nw-sort-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.nw-sort-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.nw-sort-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.nw-sort-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.nw-sort-btn--active {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.3);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — Debt Form Styles
+   ═══════════════════════════════════════════════ */
+
+.nw-form--debt {
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.nw-form-debt-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.nw-debt-prefix {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ef4444;
+  padding-right: 4px;
+}
+
+.nw-input--debt {
+  color: #ef4444;
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — Custom Type Chips
+   ═══════════════════════════════════════════════ */
+
+.nw-custom-types-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.nw-custom-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 3px 8px 3px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.nw-custom-type-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  width: 18px;
+  height: 18px;
+}
+
+.nw-custom-type-remove:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.nw-custom-type-remove svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Negative group total */
+.nw-type-group-total--neg {
+  color: #ef4444;
 }
 
 /* ═══════════════════════════════════════════════

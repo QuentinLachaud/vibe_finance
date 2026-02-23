@@ -15,6 +15,8 @@ import { CashFlowCard } from '../components/portfolio/CashFlowCard';
 import { MonteCarloChart } from '../components/portfolio/MonteCarloChart';
 import { TimelineView } from '../components/portfolio/TimelineView';
 import { LoginModal } from '../components/LoginModal';
+import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
+import { TrashIcon, EditIcon } from '../components/Icons';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { loadScenarios, saveScenario, removeScenario } from '../services/userDataService';
@@ -520,6 +522,7 @@ export function PortfolioSimulatorPage() {
   const [renamingScenario, setRenamingScenario] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [savedLabels, setSavedLabels] = usePersistedState<string[]>('vf-ps-labels', []);
+  const [deleteScenarioId, setDeleteScenarioId] = useState<string | null>(null);
 
   // ── Derived ──
   const activeScenario = savedScenarios.find((s) => s.id === activeScenarioId) ?? null;
@@ -884,16 +887,18 @@ export function PortfolioSimulatorPage() {
                 {activeScenarioId && (
                   <>
                     <button
-                      className="ps-btn ps-btn--secondary"
+                      className="ps-btn ps-btn--secondary ps-btn--icon"
                       onClick={() => { setRenamingScenario(true); setRenameValue(activeScenario?.name ?? ''); }}
+                      aria-label="Rename scenario"
                     >
-                      ✏️
+                      <EditIcon size={14} />
                     </button>
                     <button
-                      className="ps-btn ps-btn--secondary ps-btn--danger"
-                      onClick={() => handleDeleteScenario(activeScenarioId)}
+                      className="ps-btn ps-btn--secondary ps-btn--danger ps-btn--icon"
+                      onClick={() => setDeleteScenarioId(activeScenarioId)}
+                      aria-label="Delete scenario"
                     >
-                      🗑️
+                      <TrashIcon size={14} />
                     </button>
                   </>
                 )}
@@ -1162,6 +1167,18 @@ export function PortfolioSimulatorPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delete Scenario Confirmation */}
+      {deleteScenarioId && (
+        <ConfirmDialog
+          message={`Delete "${savedScenarios.find((s) => s.id === deleteScenarioId)?.name ?? 'this scenario'}"? This cannot be undone.`}
+          onCancel={() => setDeleteScenarioId(null)}
+          onConfirm={() => {
+            handleDeleteScenario(deleteScenarioId);
+            setDeleteScenarioId(null);
+          }}
+        />
       )}
 
       {/* Login Modal */}

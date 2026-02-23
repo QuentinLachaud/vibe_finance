@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useCurrency } from '../state/CurrencyContext';
 import { formatCurrency } from '../utils/currency';
 import {
@@ -9,6 +9,8 @@ import {
   type SimulationResult,
 } from '../utils/simulationEngine';
 import { LoadingCoin } from '../components/LoadingCoin';
+import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
+import { TrashIcon } from '../components/Icons';
 import type { SavedScenario, CurrencyCode } from '../types';
 import { usePersistedState } from '../hooks/usePersistedState';
 
@@ -584,11 +586,37 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode): string {
 export function ReportsPage() {
   const { currency } = useCurrency();
 
-  // Read scenarios directly from the same persisted key the Portfolio Simulator uses
-  const [scenarios] = usePersistedState<SavedScenario[]>('vf-ps-scenarios', []);
+  // Live scenarios from Portfolio Simulator
+  const [liveScenarios] = usePersistedState<SavedScenario[]>('vf-ps-scenarios', []);
+  // Persisted report scenarios — survives scenario deletion from Portfolio Simulator
+  const [reportScenarios, setReportScenarios] = usePersistedState<SavedScenario[]>('vf-report-scenarios', []);
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [showFormatPicker, setShowFormatPicker] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Sync: add new scenarios from Portfolio Simulator, update existing ones, keep deleted-from-PS snapshots
+  useEffect(() => {
+    setReportScenarios((prev) => {
+      const prevById = new Map(prev.map((s) => [s.id, s]));
+      let changed = false;
+      for (const ls of liveScenarios) {
+        const existing = prevById.get(ls.id);
+        if (!existing) {
+          prevById.set(ls.id, ls);
+          changed = true;
+        } else if (JSON.stringify(existing) !== JSON.stringify(ls)) {
+          prevById.set(ls.id, ls);
+          changed = true;
+        }
+      }
+      return changed ? Array.from(prevById.values()) : prev;
+    });
+  }, [liveScenarios, setReportScenarios]);
+
+  // Use reportScenarios as the source of truth
+  const scenarios = reportScenarios;
 
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
@@ -602,6 +630,12 @@ export function ReportsPage() {
     if (selected.size === scenarios.length) setSelected(new Set());
     else setSelected(new Set(scenarios.map((s) => s.id)));
   }, [selected.size, scenarios]);
+
+  const handleDeleteSelected = useCallback(() => {
+    setReportScenarios((prev) => prev.filter((s) => !selected.has(s.id)));
+    setSelected(new Set());
+    setShowDeleteConfirm(false);
+  }, [selected, setReportScenarios]);
 
   const selectedScenarios = useMemo(
     () => scenarios.filter((s) => selected.has(s.id)),
@@ -704,13 +738,22 @@ export function ReportsPage() {
 
               <div className="rp-actions">
                 <span className="rp-selected-count">{selected.size} selected</span>
-                <button
-                  className="ps-btn ps-btn--primary"
-                  disabled={selected.size === 0 || generating}
-                  onClick={() => setShowFormatPicker(true)}
-                >
-                  Generate Report
-                </button>
+                <div className="rp-actions-btns">
+                  <button
+                    className="ps-btn ps-btn--secondary rp-delete-btn"
+                    disabled={selected.size === 0}
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <TrashIcon size={14} /> Remove
+                  </button>
+                  <button
+                    className="ps-btn ps-btn--primary"
+                    disabled={selected.size === 0 || generating}
+                    onClick={() => setShowFormatPicker(true)}
+                  >
+                    Generate Report
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -738,6 +781,15 @@ export function ReportsPage() {
               <button className="rp-format-cancel" onClick={() => setShowFormatPicker(false)}>Cancel</button>
             </div>
           </div>
+        )}
+
+        {/* Delete confirmation dialog */}
+        {showDeleteConfirm && (
+          <ConfirmDialog
+            message={`Remove ${selected.size} report${selected.size !== 1 ? 's' : ''}? This cannot be undone.`}
+            onCancel={() => setShowDeleteConfirm(false)}
+            onConfirm={handleDeleteSelected}
+          />
         )}
       </div>
     </div>
