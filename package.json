@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@quentinlachaud/app-component-library": "^0.1.0",
+    "@quentinlachaud/app-component-library": "^0.2.0",
     "@tailwindcss/vite": "^4.2.0",
     "firebase": "^12.9.0",
     "jspdf": "^4.2.0",

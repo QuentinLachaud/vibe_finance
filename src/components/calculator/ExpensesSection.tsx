@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { Button, NumberInput, TextInput } from '@quentinlachaud/app-component-library';
 import { useCalculator } from '../../state/CalculatorContext';
 import { useCurrency } from '../../state/CurrencyContext';
@@ -104,7 +104,7 @@ export function ExpensesSection() {
               <span className="currency-prefix-sm">{currency.symbol}</span>
               <NumberInput
                 value={expense.amount}
-                onChange={(val) =>
+                onChange={(val: number | undefined) =>
                   dispatch({
                     type: 'UPDATE_EXPENSE',
                     payload: { id: expense.id, amount: val ?? 0 },
@@ -158,7 +158,7 @@ export function ExpensesSection() {
           <TextInput
             placeholder="Category"
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
             size="sm"
             fullWidth
           />
@@ -166,7 +166,7 @@ export function ExpensesSection() {
             <span className="currency-prefix-sm">{currency.symbol}</span>
             <NumberInput
               value={newAmount}
-              onChange={(val) => setNewAmount(val ?? 0)}
+              onChange={(val: number | undefined) => setNewAmount(val ?? 0)}
               min={0}
               step={10}
               hideControls

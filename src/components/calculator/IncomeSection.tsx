@@ -20,7 +20,7 @@ export function IncomeSection() {
           <SegmentedToggle<IncomeFrequency>
             options={frequencyOptions}
             value={state.incomeFrequency}
-            onChange={(val) =>
+            onChange={(val: IncomeFrequency) =>
               dispatch({ type: 'SET_INCOME_FREQUENCY', payload: val })
             }
             size="md"
@@ -41,8 +41,11 @@ export function IncomeSection() {
         <span className="currency-prefix">{currency.symbol}</span>
         <NumberInput
           value={state.income}
-          onChange={(val) =>
-            dispatch({ type: 'SET_INCOME', payload: val ?? 0 })
+          onChange={(val: number | undefined) =>
+            dispatch({
+              type: 'SET_INCOME',
+              payload: val ?? 0,
+            })
           }
           min={0}
           step={100}

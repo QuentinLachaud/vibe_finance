@@ -1,13 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import { NAV_ITEMS } from '../router/navigation';
+import { PAGE_NAV_ITEMS, type PageNavItem } from '../router/navigation';
 
 export function PageSubNav() {
   return (
     <nav className="page-sub-nav">
-      {NAV_ITEMS.map((item: { path: string; label: string }) => (
+      {PAGE_NAV_ITEMS.map((item: PageNavItem) => (
         <NavLink
-          key={item.path}
-          to={item.path}
+          key={item.href}
+          to={item.href}
           className={({ isActive }) =>
             `sub-nav-link ${isActive ? 'sub-nav-link--active' : ''}`
           }
