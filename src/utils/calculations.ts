@@ -21,12 +21,12 @@ export function monthlySavings(
   return monthlyIncome - totalExpenses(expenses);
 }
 
-/** Savings rate as percentage (0 – 100) */
+/** Savings rate as percentage (0 – 100), floored at 0 */
 export function savingsRate(
   monthlyIncome: number,
   expenses: Expense[],
 ): number {
   if (monthlyIncome <= 0) return 0;
   const savings = monthlySavings(monthlyIncome, expenses);
-  return Math.round((savings / monthlyIncome) * 100);
+  return Math.max(0, Math.round((savings / monthlyIncome) * 100));
 }
