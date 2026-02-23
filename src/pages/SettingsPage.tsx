@@ -2,8 +2,11 @@ import { useMemo, useState } from 'react';
 import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
+import { usePersistedState } from '../hooks/usePersistedState';
 import type { CurrencyCode } from '../types';
 import type { ThemeMode } from '../types';
+
+type PathDisplay = 'quartiles' | 'all' | 'both';
 
 const SIM_YEARS_KEY = 'vibe-finance-sim-default-years';
 
@@ -26,6 +29,8 @@ export function SettingsPage() {
   const { user, logout } = useAuth();
 
   const [simulationYears, setSimulationYears] = useState<number>(getSavedSimulationYears);
+  const [numPaths, setNumPaths] = usePersistedState<number>('vf-ps-num-paths', 500);
+  const [chartDisplay, setChartDisplay] = usePersistedState<PathDisplay>('vf-ps-show-all-paths', 'quartiles');
   const [status, setStatus] = useState<string>('');
 
   const accountLabel = useMemo(() => {
@@ -150,6 +155,54 @@ export function SettingsPage() {
             </div>
           </div>
           <p className="settings-note">Used as the default end date in Portfolio Simulator.</p>
+        </section>
+
+        <section className="settings-card">
+          <h2 className="settings-card-title">Advanced Simulation</h2>
+
+          <div className="settings-field">
+            <label className="settings-label">Simulation Paths</label>
+            <p className="settings-note" style={{ marginBottom: 8 }}>More paths = smoother results but slower.</p>
+            <div className="settings-segmented">
+              <button
+                className={`settings-segment ${numPaths === 500 ? 'settings-segment--active' : ''}`}
+                onClick={() => setNumPaths(500)}
+              >
+                500
+              </button>
+              <button
+                className={`settings-segment ${numPaths === 2000 ? 'settings-segment--active' : ''}`}
+                onClick={() => setNumPaths(2000)}
+              >
+                2,000
+              </button>
+            </div>
+          </div>
+
+          <div className="settings-field">
+            <label className="settings-label">Chart Display</label>
+            <p className="settings-note" style={{ marginBottom: 8 }}>Choose how Monte Carlo results are visualised.</p>
+            <div className="settings-segmented">
+              <button
+                className={`settings-segment ${chartDisplay === 'quartiles' ? 'settings-segment--active' : ''}`}
+                onClick={() => setChartDisplay('quartiles')}
+              >
+                Quartiles
+              </button>
+              <button
+                className={`settings-segment ${chartDisplay === 'all' ? 'settings-segment--active' : ''}`}
+                onClick={() => setChartDisplay('all')}
+              >
+                All Paths
+              </button>
+              <button
+                className={`settings-segment ${chartDisplay === 'both' ? 'settings-segment--active' : ''}`}
+                onClick={() => setChartDisplay('both')}
+              >
+                Both
+              </button>
+            </div>
+          </div>
         </section>
 
         <section className="settings-card">

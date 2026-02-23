@@ -525,12 +525,10 @@ export function PortfolioSimulatorPage() {
 
   // ── Advanced settings (persisted) ──
   const DEFAULT_VOLATILITY = 15; // S&P 500 long-run annualised volatility ~15%
-  const SIM_OPTIONS = [500, 1000, 2500, 5000, 10000] as const;
   const [volatility, setVolatility] = usePersistedState<number>('vf-ps-volatility', DEFAULT_VOLATILITY);
-  const [numPaths, setNumPaths] = usePersistedState<number>('vf-ps-num-paths', 500);
+  const [numPaths] = usePersistedState<number>('vf-ps-num-paths', 500);
   type PathDisplay = 'quartiles' | 'all' | 'both';
-  const [showAllPaths, setShowAllPaths] = usePersistedState<PathDisplay>('vf-ps-show-all-paths', 'quartiles');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAllPaths] = usePersistedState<PathDisplay>('vf-ps-show-all-paths', 'quartiles');
   const [showVolatilityWarning, setShowVolatilityWarning] = useState(false);
   const [pendingVolatility, setPendingVolatility] = useState<number | null>(null);
 
@@ -1011,74 +1009,6 @@ export function PortfolioSimulatorPage() {
                 />
               )}
             </div>
-
-            {/* ── Advanced Settings ── */}
-            <button
-              className="ps-advanced-toggle"
-              onClick={() => setShowAdvanced((v) => !v)}
-            >
-              <span>⚙️ Advanced Settings</span>
-              <span className={`ps-table-arrow ${showAdvanced ? 'ps-table-arrow--open' : ''}`}>▼</span>
-            </button>
-
-            {showAdvanced && (
-              <div className="ps-advanced-panel">
-                {/* Volatility */}
-                <div className="ps-field">
-                  <label className="ps-label">
-                    Annual Volatility
-                    <span className="ps-label-hint">S&P 500 long-run ≈ 15%</span>
-                  </label>
-                  <NumericInput
-                    value={volatility}
-                    onChange={(v) => {
-                      if (v !== DEFAULT_VOLATILITY) {
-                        setPendingVolatility(v);
-                        setShowVolatilityWarning(true);
-                      } else {
-                        setVolatility(v);
-                      }
-                    }}
-                    suffix="%"
-                    ariaLabel="Annual volatility"
-                    min={1}
-                    max={50}
-                  />
-                </div>
-
-                {/* Number of Simulations */}
-                <div className="ps-field">
-                  <label className="ps-label">Simulation Paths</label>
-                  <div className="ps-sim-options">
-                    {SIM_OPTIONS.map((n) => (
-                      <button
-                        key={n}
-                        className={`ps-sim-option ${numPaths === n ? 'ps-sim-option--active' : ''}`}
-                        onClick={() => setNumPaths(n)}
-                      >
-                        {n.toLocaleString()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Path display mode */}
-                <div className="ps-field">
-                  <label className="ps-label">Chart Display</label>
-                  <div className="ps-toggle">
-                    {(['quartiles', 'all', 'both'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        className={`ps-toggle-btn ${showAllPaths === mode ? 'ps-toggle-btn--active' : ''}`}
-                        onClick={() => setShowAllPaths(mode)}
-                      >
-                        {mode === 'quartiles' ? 'Quartiles' : mode === 'all' ? 'All Paths' : 'Both'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
             <button
               className="ps-btn ps-btn--gold ps-btn--full"

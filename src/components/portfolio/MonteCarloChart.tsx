@@ -294,7 +294,7 @@ export function MonteCarloChart({ data, result, currencyCode, showAllPaths = 'qu
                 <Line
                   key={`path_${p}`}
                   dataKey={`path_${p}`}
-                  stroke="rgba(139, 92, 246, 0.08)"
+                  stroke={pathCount > 1000 ? 'rgba(139, 92, 246, 0.03)' : 'rgba(139, 92, 246, 0.06)'}
                   strokeWidth={0.5}
                   dot={false}
                   legendType="none"
