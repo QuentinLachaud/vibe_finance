@@ -26,14 +26,6 @@ export function IncomeSection() {
             size="md"
             ariaLabel="Income frequency toggle"
           />
-          <select
-            className="currency-select currency-select--inline"
-            value={currency.code}
-            disabled
-            aria-label="Currency display"
-          >
-            <option>{currency.label}</option>
-          </select>
         </div>
       }
     >

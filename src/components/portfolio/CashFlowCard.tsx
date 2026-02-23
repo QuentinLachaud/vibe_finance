@@ -1,5 +1,6 @@
 import { formatCurrency } from '../../utils/currency';
 import { formatMonth, type CashFlow } from '../../utils/simulationEngine';
+import { TrashIcon, EditIcon } from '../Icons';
 import type { CurrencyCode } from '../../types';
 
 interface CashFlowCardProps {
@@ -44,14 +45,14 @@ export function CashFlowCard({ cashFlow, currencyCode, onEdit, onDelete, onToggl
           onClick={() => onEdit(cashFlow.id)}
           aria-label="Edit cash flow"
         >
-          ✏️
+          <EditIcon size={14} />
         </button>
         <button
-          className="ps-scenario-action-btn"
+          className="ps-scenario-action-btn ps-scenario-action-btn--delete"
           onClick={() => onDelete(cashFlow.id)}
           aria-label="Delete cash flow"
         >
-          🗑️
+          <TrashIcon size={14} />
         </button>
       </div>
 

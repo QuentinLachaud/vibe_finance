@@ -17,6 +17,8 @@ import { formatCurrency } from '../utils/currency';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useAuth } from '../state/AuthContext';
 import { loadNetWorth, saveNetWorth } from '../services/userDataService';
+import { TrashIcon } from '../components/Icons';
+import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import type { CurrencyCode } from '../types';
 
 // ── Types ──
@@ -49,12 +51,29 @@ export interface NetWorthData {
 const EMOJI_OPTIONS = [
   '🏠', '🚗', '💰', '📈', '🏦', '💎', '🪙', '🏢',
   '💼', '🎨', '⌚', '🏝️', '🔑', '📱', '🖥️', '🎵',
+  '🏘️', '💳', '🏗️', '🎓', '🏥', '📦',
 ];
 
-const DEFAULT_TYPES = [
+const DEFAULT_ASSET_TYPES = [
   'Property', 'Cash & Savings', 'Investments', 'Pension',
   'Vehicle', 'Crypto', 'Collectibles', 'Business',
 ];
+
+const DEFAULT_DEBT_TYPES = [
+  'Mortgage', 'Student Loan', 'Car Loan', 'Credit Card',
+  'Personal Loan', 'Other Debt',
+];
+
+const DEFAULT_TYPES = [...DEFAULT_ASSET_TYPES, ...DEFAULT_DEBT_TYPES];
+
+const DEBT_TYPE_SET = new Set(DEFAULT_DEBT_TYPES);
+
+/** Returns true if the given type is a known debt/liability type */
+function isDebtType(type: string): boolean {
+  return DEBT_TYPE_SET.has(type);
+}
+
+type SortMode = 'type' | 'class' | 'value';
 
 const ASSET_COLORS = [
   '#22d3ee', '#8b5cf6', '#10b981', '#f59e0b',
@@ -108,6 +127,17 @@ const EXAMPLE_ASSETS: Asset[] = [
     ],
     createdAt: '', updatedAt: '',
   },
+  {
+    id: 'example-5', emoji: '💳', name: 'Credit Card', type: 'Credit Card',
+    snapshots: [
+      { date: '2023-01-15', value: -3200 },
+      { date: '2023-07-01', value: -2800 },
+      { date: '2024-01-15', value: -1900 },
+      { date: '2024-07-01', value: -1200 },
+      { date: '2025-01-15', value: -800 },
+    ],
+    createdAt: '', updatedAt: '',
+  },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
@@ -119,6 +149,12 @@ const TYPE_COLORS: Record<string, string> = {
   Crypto: '#ec4899',
   Collectibles: '#ef4444',
   Business: '#06b6d4',
+  Mortgage: '#f97316',
+  'Student Loan': '#a855f7',
+  'Car Loan': '#6366f1',
+  'Credit Card': '#ef4444',
+  'Personal Loan': '#f59e0b',
+  'Other Debt': '#71717a',
 };
 
 function colorForType(type: string, idx: number): string {
@@ -197,17 +233,20 @@ function TypeSelector({
   value,
   onChange,
   customTypes,
+  onRemoveCustomType,
 }: {
   value: string;
   onChange: (type: string) => void;
   customTypes: string[];
+  onRemoveCustomType?: (type: string) => void;
 }) {
   const [customInput, setCustomInput] = useState('');
   const [showCustom, setShowCustom] = useState(false);
-  const allTypes = useMemo(() => {
-    const set = new Set([...customTypes, ...DEFAULT_TYPES]);
-    return Array.from(set);
-  }, [customTypes]);
+  const customOnlyTypes = useMemo(
+    () => customTypes.filter(t => !DEFAULT_ASSET_TYPES.includes(t) && !DEFAULT_DEBT_TYPES.includes(t)),
+    [customTypes],
+  );
+  const allAssetTypes = useMemo(() => [...DEFAULT_ASSET_TYPES, ...customOnlyTypes], [customOnlyTypes]);
 
   return (
     <div className="nw-type-selector">
@@ -224,11 +263,35 @@ function TypeSelector({
               }
             }}
           >
+            <optgroup label="Assets">
+              {allAssetTypes.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Liabilities">
+              {DEFAULT_DEBT_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </optgroup>
             <option value="__custom__">+ Custom Type</option>
-            {allTypes.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
           </select>
+          {onRemoveCustomType && customOnlyTypes.length > 0 && (
+            <div className="nw-custom-types-list">
+              {customOnlyTypes.map(t => (
+                <span key={t} className="nw-custom-type-chip">
+                  {t}
+                  <button
+                    className="nw-custom-type-remove"
+                    onClick={(e) => { e.stopPropagation(); onRemoveCustomType(t); }}
+                    title={`Remove "${t}" type`}
+                    type="button"
+                  >
+                    <TrashIcon size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </>
       ) : (
         <div className="nw-custom-type-row">
@@ -273,23 +336,26 @@ function AssetForm({
   onSave,
   onCancel,
   onNewCustomType,
+  onRemoveCustomType,
 }: {
   initial?: Asset;
   customTypes: string[];
   onSave: (asset: Asset) => void;
   onCancel: () => void;
   onNewCustomType: (t: string) => void;
+  onRemoveCustomType: (t: string) => void;
 }) {
   const [emoji, setEmoji] = useState(initial?.emoji || '💰');
   const [name, setName] = useState(initial?.name || '');
-  const [type, setType] = useState(initial?.type || DEFAULT_TYPES[0]);
-  const [value, setValue] = useState(initial ? String(latestValue(initial)) : '');
+  const [type, setType] = useState(initial?.type || DEFAULT_ASSET_TYPES[0]);
+  const [value, setValue] = useState(initial ? String(Math.abs(latestValue(initial))) : '');
   const [date, setDate] = useState(
     initial?.snapshots.length
       ? [...initial.snapshots].sort((a, b) => b.date.localeCompare(a.date))[0].date
       : todayStr(),
   );
   const { currency } = useCurrency();
+  const debt = isDebtType(type);
 
   const handleTypeChange = useCallback((t: string) => {
     setType(t);
@@ -303,6 +369,9 @@ function AssetForm({
     const parsed = Number(value.replace(/,/g, ''));
     if (isNaN(parsed)) return;
 
+    // Debt types are always stored as negative
+    const finalValue = debt ? -Math.abs(parsed) : Math.abs(parsed);
+
     const existing = initial
       ? initial.snapshots.filter(s => s.date !== date)
       : [];
@@ -313,7 +382,7 @@ function AssetForm({
       emoji,
       name: name.trim(),
       type,
-      snapshots: [...existing, { date, value: parsed }].sort((a, b) => a.date.localeCompare(b.date)),
+      snapshots: [...existing, { date, value: finalValue }].sort((a, b) => a.date.localeCompare(b.date)),
       createdAt: initial?.createdAt || now,
       updatedAt: now,
     };
@@ -321,29 +390,33 @@ function AssetForm({
   };
 
   return (
-    <div className="nw-form">
+    <div className={`nw-form${debt ? ' nw-form--debt' : ''}`}>
+      {debt && (
+        <div className="nw-form-debt-badge">Liability</div>
+      )}
       <div className="nw-form-row">
         <EmojiPicker value={emoji} onChange={setEmoji} />
         <input
           className="nw-input nw-input--name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Asset name"
+          placeholder={debt ? 'Liability name' : 'Asset name'}
           autoFocus
         />
       </div>
 
       <div className="nw-form-row">
         <label className="nw-form-label">Type</label>
-        <TypeSelector value={type} onChange={handleTypeChange} customTypes={customTypes} />
+        <TypeSelector value={type} onChange={handleTypeChange} customTypes={customTypes} onRemoveCustomType={onRemoveCustomType} />
       </div>
 
       <div className="nw-form-row">
-        <label className="nw-form-label">Value</label>
+        <label className="nw-form-label">{debt ? 'Owed' : 'Value'}</label>
         <div className="nw-value-row">
+          {debt && <span className="nw-debt-prefix">−</span>}
           <span className="nw-currency-prefix">{currency.symbol}</span>
           <input
-            className="nw-input nw-input--value"
+            className={`nw-input nw-input--value${debt ? ' nw-input--debt' : ''}`}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="0"
@@ -361,7 +434,7 @@ function AssetForm({
 
       <div className="nw-form-actions">
         <button className="ps-btn ps-btn--primary" onClick={handleSubmit} type="button">
-          {initial ? 'Save Changes' : 'Add Asset'}
+          {initial ? 'Save Changes' : debt ? 'Add Liability' : 'Add Asset'}
         </button>
         <button className="ps-btn ps-btn--secondary" onClick={onCancel} type="button">
           Cancel
@@ -500,7 +573,7 @@ function AssetCard({
 
 /** Individual asset value-over-time chart */
 function AssetHistoryChart({ asset, currencyCode, color }: { asset: Asset; currencyCode: CurrencyCode; color: string }) {
-  if (asset.snapshots.length < 2) return null;
+  if (asset.snapshots.length === 0) return null;
 
   const data = [...asset.snapshots]
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -545,7 +618,7 @@ function NetWorthChart({ assets, currencyCode }: { assets: Asset[]; currencyCode
     for (const s of a.snapshots) dateSet.add(s.date);
   }
   const allDates = Array.from(dateSet).sort();
-  if (allDates.length < 2) return null;
+  if (allDates.length < 1) return null;
 
   // For each date, carry forward each asset's latest known value
   const data = allDates.map((date) => {
@@ -623,17 +696,9 @@ function renderActiveShape(props: any) {
   );
 }
 
+// Stable reference — never changes so Pie won't re-mount on hover.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderPieShape(activeIdx: number | undefined) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (props: any) => {
-    const { index } = props;
-    if (index === activeIdx) return renderActiveShape(props);
-    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-    return <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius}
-      startAngle={startAngle} endAngle={endAngle} fill={fill} />;
-  };
-}
+const stableActiveShape = (props: any) => renderActiveShape(props);
 
 function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCode: CurrencyCode }) {
   const [mode, setMode] = useState<DonutMode>('type');
@@ -667,22 +732,20 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
     return {
       slices: [
         { name: 'Assets', value: assetsTotal, items: assetItems },
-        ...(debtsTotal > 0 ? [{ name: 'Debts', value: debtsTotal, items: debtItems }] : []),
+        ...(debtsTotal > 0 ? [{ name: 'Liabilities', value: debtsTotal, items: debtItems }] : []),
       ],
       debtPct: assetsTotal + debtsTotal > 0 ? (debtsTotal / (assetsTotal + debtsTotal)) * 100 : 0,
     };
   }, [assets]);
 
-  const debtColors = ['#3b82f6', '#ef4444'];
+  const debtColors = ['#22d3ee', '#ef4444'];
   const chartData = mode === 'type' ? typeData : debtData.slices;
   const chartColors = mode === 'type' ? typeColors : debtColors;
   const activeSlice = activeIdx != null ? chartData[activeIdx] : null;
+  const total = chartData.reduce((s, d) => s + d.value, 0);
 
   // Strip `items` for Recharts (it only wants { name, value })
   const pieData = useMemo(() => chartData.map(({ name, value }) => ({ name, value })), [chartData]);
-
-  // Memoize shape renderer to avoid re-creating on every render cycle
-  const shapeRenderer = useMemo(() => renderPieShape(activeIdx), [activeIdx]);
 
   return (
     <div className="nw-donut-view">
@@ -690,46 +753,75 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
         <span className="nw-donut-title">Portfolio Breakdown</span>
         <div className="nw-donut-toggle">
           <button className={`nw-donut-toggle-btn${mode === 'type' ? ' nw-donut-toggle-btn--active' : ''}`}
-            onClick={() => { setMode('type'); setActiveIdx(undefined); }}>Asset Type</button>
+            onClick={() => { setMode('type'); setActiveIdx(undefined); }}>By Type</button>
           <button className={`nw-donut-toggle-btn${mode === 'debt' ? ' nw-donut-toggle-btn--active' : ''}`}
-            onClick={() => { setMode('debt'); setActiveIdx(undefined); }}>Debts / Assets</button>
+            onClick={() => { setMode('debt'); setActiveIdx(undefined); }}>Assets vs Debts</button>
         </div>
       </div>
 
       {mode === 'debt' && debtData.debtPct > 0 && (
-        <div className="nw-debt-banner">
-          <span className="nw-debt-pct">{debtData.debtPct.toFixed(1)}%</span>
-          <span className="nw-debt-label">of your portfolio is debt</span>
+        <div className="nw-debt-note">
+          <span className="nw-debt-note-pct">{debtData.debtPct.toFixed(1)}%</span>
+          <span className="nw-debt-note-label"> liabilities</span>
         </div>
       )}
 
       <div className="nw-donut-chart-area">
-        <ResponsiveContainer width="100%" height={280}>
-          <PieChart>
-            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-              innerRadius={65} outerRadius={110} paddingAngle={2}
-              shape={shapeRenderer}
-              onMouseEnter={(_: unknown, index: number) => setActiveIdx(index)}
-              onMouseLeave={() => setActiveIdx(undefined)}>
-              {pieData.map((_entry, i) => (
-                <Cell key={i} fill={chartColors[i % chartColors.length]} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
+        <div className="nw-donut-chart-wrap">
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                innerRadius={70} outerRadius={115} paddingAngle={2}
+                {...{ activeIndex: activeIdx, activeShape: stableActiveShape } as any}
+                onMouseEnter={(_: unknown, index: number) => setActiveIdx(index)}
+                onMouseLeave={() => setActiveIdx(undefined)}>
+                {pieData.map((_entry, i) => (
+                  <Cell key={i} fill={chartColors[i % chartColors.length]} stroke="transparent" />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          {/* Center label */}
+          <div className="nw-donut-center-label">
+            {activeSlice ? (
+              <>
+                <span className="nw-donut-center-value" style={{ color: chartColors[activeIdx!] }}>
+                  {total > 0 ? `${((activeSlice.value / total) * 100).toFixed(0)}%` : '—'}
+                </span>
+                <span className="nw-donut-center-name">{activeSlice.name}</span>
+              </>
+            ) : (
+              <>
+                <span className="nw-donut-center-value">{formatCurrency(total, currencyCode)}</span>
+                <span className="nw-donut-center-name">Total</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {activeSlice && (
-        <div className="nw-donut-tooltip">
-          <span className="nw-donut-tooltip-title">{activeSlice.name}</span>
-          {activeSlice.items.map((item, i) => (
-            <div className="nw-donut-tooltip-row" key={i}>
-              <span>{item.name}</span>
-              <span>{formatCurrency(item.value, currencyCode)}</span>
+      {/* Hover detail card — always rendered, fades in/out */}
+      <div className={`nw-donut-tooltip${activeSlice ? ' nw-donut-tooltip--visible' : ''}`}>
+        {activeSlice && (
+          <>
+            <div className="nw-donut-tooltip-header">
+              <span className="nw-donut-tooltip-swatch" style={{ background: chartColors[activeIdx!] }} />
+              <span className="nw-donut-tooltip-title">{activeSlice.name}</span>
+              <span className="nw-donut-tooltip-total">{formatCurrency(activeSlice.value, currencyCode)}</span>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="nw-donut-tooltip-body">
+              {activeSlice.items.map((item, i) => (
+                <div className="nw-donut-tooltip-row" key={i}>
+                  <span className="nw-donut-tooltip-item-name">{item.name}</span>
+                  <span className={`nw-donut-tooltip-item-value${item.value < 0 ? ' nw-donut-tooltip-item-value--neg' : ''}`}>
+                    {formatCurrency(item.value, currencyCode)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       <div className="nw-donut-legend">
         {chartData.map((d, i) => (
@@ -787,20 +879,6 @@ export function NetWorthPage() {
 
   const totalNetWorth = useMemo(() => assets.reduce((sum, a) => sum + latestValue(a), 0), [assets]);
 
-  // Group by type
-  const groupedByType = useMemo(() => {
-    const map = new Map<string, Asset[]>();
-    for (const a of assets) {
-      if (!map.has(a.type)) map.set(a.type, []);
-      map.get(a.type)!.push(a);
-    }
-    return Array.from(map.entries()).sort((a, b) => {
-      const aTotal = a[1].reduce((s, x) => s + latestValue(x), 0);
-      const bTotal = b[1].reduce((s, x) => s + latestValue(x), 0);
-      return bTotal - aTotal;
-    });
-  }, [assets]);
-
   const handleSave = useCallback((asset: Asset) => {
     updateData((prev) => {
       const idx = prev.assets.findIndex((a) => a.id === asset.id);
@@ -841,15 +919,51 @@ export function NetWorthPage() {
     });
   }, [updateData]);
 
+  const handleRemoveCustomType = useCallback((t: string) => {
+    updateData((prev) => ({
+      ...prev,
+      customTypes: prev.customTypes.filter((ct) => ct !== t),
+    }));
+  }, [updateData]);
+
   const editingAsset = editingId ? assets.find((a) => a.id === editingId) : undefined;
   const historyAsset = historyAssetId ? assets.find((a) => a.id === historyAssetId) : undefined;
 
-  // Has enough data for a net worth chart?
+  const [sortMode, setSortMode] = usePersistedState<SortMode>('vf-nw-sort', 'type');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const deleteAsset = deleteConfirmId ? assets.find(a => a.id === deleteConfirmId) : null;
+
+  // Has enough data for a chart
   const hasChartData = useMemo(() => {
-    const dateSet = new Set<string>();
-    for (const a of assets) for (const s of a.snapshots) dateSet.add(s.date);
-    return dateSet.size >= 2;
+    return assets.some(a => a.snapshots.length >= 1);
   }, [assets]);
+
+  // Sorted/grouped asset list
+  const sortedGroups = useMemo(() => {
+    if (sortMode === 'type') {
+      const map = new Map<string, Asset[]>();
+      for (const a of assets) {
+        if (!map.has(a.type)) map.set(a.type, []);
+        map.get(a.type)!.push(a);
+      }
+      return Array.from(map.entries()).sort((a, b) => {
+        const aTotal = a[1].reduce((s, x) => s + Math.abs(latestValue(x)), 0);
+        const bTotal = b[1].reduce((s, x) => s + Math.abs(latestValue(x)), 0);
+        return bTotal - aTotal;
+      });
+    }
+    if (sortMode === 'class') {
+      const assetList = assets.filter(a => latestValue(a) >= 0);
+      const debtList = assets.filter(a => latestValue(a) < 0);
+      const groups: [string, Asset[]][] = [];
+      if (assetList.length) groups.push(['Assets', assetList]);
+      if (debtList.length) groups.push(['Liabilities', debtList]);
+      return groups;
+    }
+    // sortMode === 'value'
+    const sorted = [...assets].sort((a, b) => Math.abs(latestValue(b)) - Math.abs(latestValue(a)));
+    return [['All Items', sorted]] as [string, Asset[]][];
+  }, [assets, sortMode]);
 
   return (
     <div className="page-container">
@@ -882,15 +996,27 @@ export function NetWorthPage() {
           <div className="ps-card nw-chart-card">
             <div className="nw-chart-header">
               <h2 className="ps-card-title">{flipped ? 'Portfolio Breakdown' : 'Net Worth Over Time'}</h2>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {!flipped && (
-                  <button className="nw-toggle-btn" onClick={() => setShowChart(!showChart)}>
-                    {showChart ? 'Hide Chart' : 'Show Chart'}
-                  </button>
-                )}
-                <button className="ps-flip-btn" onClick={() => setFlipped(!flipped)}
-                  title={flipped ? 'Show chart' : 'Show breakdown'}>
-                  {flipped ? '📈 Chart' : '🍩 Breakdown'}
+              <div className="nw-chart-header-actions">
+                <button
+                  className={`nw-view-toggle-btn${!flipped ? ' nw-view-toggle-btn--active' : ''}`}
+                  onClick={() => setFlipped(false)}
+                  title="Line chart view"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="2,12 5,8 9,10 14,4" />
+                  </svg>
+                  Chart
+                </button>
+                <button
+                  className={`nw-view-toggle-btn${flipped ? ' nw-view-toggle-btn--active' : ''}`}
+                  onClick={() => setFlipped(true)}
+                  title="Donut breakdown"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="8" cy="8" r="6" />
+                    <circle cx="8" cy="8" r="2.5" />
+                  </svg>
+                  Breakdown
                 </button>
               </div>
             </div>
@@ -908,17 +1034,44 @@ export function NetWorthPage() {
         {/* Asset list */}
         <div className="ps-card nw-assets-card">
           <div className="nw-assets-header">
-            <h2 className="ps-card-title">Assets</h2>
+            <h2 className="ps-card-title">Assets & Liabilities</h2>
             {!showForm && !editingId && (
               <button
                 className="nw-add-btn"
                 onClick={() => setShowForm(true)}
-                title="Add Asset"
+                title="Add Asset or Liability"
               >
                 <span className="nw-add-icon">+</span>
               </button>
             )}
           </div>
+
+          {/* Sort / group buttons */}
+          {assets.length > 0 && (
+            <div className="nw-sort-bar">
+              <span className="nw-sort-label">Group by</span>
+              <div className="nw-sort-btns">
+                <button
+                  className={`nw-sort-btn${sortMode === 'type' ? ' nw-sort-btn--active' : ''}`}
+                  onClick={() => setSortMode('type')}
+                >
+                  Type
+                </button>
+                <button
+                  className={`nw-sort-btn${sortMode === 'class' ? ' nw-sort-btn--active' : ''}`}
+                  onClick={() => setSortMode('class')}
+                >
+                  Asset / Liability
+                </button>
+                <button
+                  className={`nw-sort-btn${sortMode === 'value' ? ' nw-sort-btn--active' : ''}`}
+                  onClick={() => setSortMode('value')}
+                >
+                  Value
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Create form */}
           {showForm && !editingId && (
@@ -927,6 +1080,7 @@ export function NetWorthPage() {
               onSave={handleSave}
               onCancel={() => setShowForm(false)}
               onNewCustomType={handleNewCustomType}
+              onRemoveCustomType={handleRemoveCustomType}
             />
           )}
 
@@ -938,6 +1092,7 @@ export function NetWorthPage() {
               onSave={handleSave}
               onCancel={() => setEditingId(null)}
               onNewCustomType={handleNewCustomType}
+              onRemoveCustomType={handleRemoveCustomType}
             />
           )}
 
@@ -982,24 +1137,26 @@ export function NetWorthPage() {
             </div>
           )}
 
-          {/* Grouped asset list */}
-          {groupedByType.map(([typeName, typeAssets]) => {
-            const typeTotal = typeAssets.reduce((s, a) => s + latestValue(a), 0);
+          {/* Sorted/grouped asset list */}
+          {sortedGroups.map(([groupName, groupAssets]) => {
+            const groupTotal = groupAssets.reduce((s, a) => s + latestValue(a), 0);
             return (
-              <div key={typeName} className="nw-type-group">
+              <div key={groupName} className="nw-type-group">
                 <div className="nw-type-group-header">
-                  <span className="nw-type-group-name">{typeName}</span>
-                  <span className="nw-type-group-total">{formatCurrency(typeTotal, currency.code)}</span>
+                  <span className="nw-type-group-name">{groupName}</span>
+                  <span className={`nw-type-group-total${groupTotal < 0 ? ' nw-type-group-total--neg' : ''}`}>
+                    {formatCurrency(groupTotal, currency.code)}
+                  </span>
                 </div>
-                {typeAssets.map((asset) => (
+                {groupAssets.map((asset) => (
                   <div key={asset.id}>
-                    <div onClick={() => setExpandedAsset(expandedAsset === asset.id ? null : asset.id)} style={{ cursor: asset.snapshots.length >= 2 ? 'pointer' : 'default' }}>
+                    <div onClick={() => setExpandedAsset(expandedAsset === asset.id ? null : asset.id)} style={{ cursor: asset.snapshots.length >= 1 ? 'pointer' : 'default' }}>
                       <AssetCard
                         asset={asset}
                         color={ASSET_COLORS[assets.indexOf(asset) % ASSET_COLORS.length]}
                         currencyCode={currency.code}
                         onEdit={() => setEditingId(asset.id)}
-                        onDelete={() => handleDelete(asset.id)}
+                        onDelete={() => setDeleteConfirmId(asset.id)}
                         onShowHistory={() => setHistoryAssetId(asset.id)}
                       />
                     </div>
@@ -1016,6 +1173,18 @@ export function NetWorthPage() {
             );
           })}
         </div>
+
+        {/* Delete confirmation */}
+        {deleteConfirmId && deleteAsset && (
+          <ConfirmDialog
+            message={`Remove "${deleteAsset.name}"? All history will be permanently deleted.`}
+            onCancel={() => setDeleteConfirmId(null)}
+            onConfirm={() => {
+              handleDelete(deleteConfirmId);
+              setDeleteConfirmId(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );
