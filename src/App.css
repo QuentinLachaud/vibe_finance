@@ -5919,21 +5919,6 @@ a.header-logo {
 }
 
 /* ═══════════════════════════════════════════
-   Portfolio Simulator — Loading Overlay
-   ═══════════════════════════════════════════ */
-.ps-sim-loading-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(11, 17, 32, 0.7);
-  backdrop-filter: blur(4px);
-  border-radius: var(--radius-lg);
-}
-
-/* ═══════════════════════════════════════════
    Confirm dialog — detail text
    ═══════════════════════════════════════════ */
 .confirm-detail {

@@ -15,7 +15,6 @@ import { CashFlowCard } from '../components/portfolio/CashFlowCard';
 import { MonteCarloChart } from '../components/portfolio/MonteCarloChart';
 import { TimelineView } from '../components/portfolio/TimelineView';
 import { LoginModal } from '../components/LoginModal';
-import { LoadingCoin } from '../components/LoadingCoin';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { TrashIcon, EditIcon } from '../components/Icons';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -526,14 +525,10 @@ export function PortfolioSimulatorPage() {
   // ── Advanced settings (persisted) ──
   const DEFAULT_VOLATILITY = 15; // S&P 500 long-run annualised volatility ~15%
   const [volatility, setVolatility] = usePersistedState<number>('vf-ps-volatility', DEFAULT_VOLATILITY);
-  const [numPaths] = usePersistedState<number>('vf-ps-num-paths', 500);
+  const numPaths = 500;
 
   const [showVolatilityWarning, setShowVolatilityWarning] = useState(false);
   const [pendingVolatility, setPendingVolatility] = useState<number | null>(null);
-
-  // ── Simulation loading state ──
-  const [isSimulating, setIsSimulating] = useState(false);
-  const simulationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Derived ──
   const activeScenario = savedScenarios.find((s) => s.id === activeScenarioId) ?? null;
@@ -572,14 +567,13 @@ export function PortfolioSimulatorPage() {
     return () => { cancelled = true; };
   }, [user, setSavedScenarios]);
 
-  // ── Simulation (with loading spinner) ──
+  // ── Simulation ──
   const [result, setResult] = useState<SimulationResult | null>(null);
   const prevInputsRef = useRef<string>('');
 
   useEffect(() => {
     if (cashFlows.length === 0) {
       setResult(null);
-      setIsSimulating(false);
       prevInputsRef.current = '';
       return;
     }
@@ -587,27 +581,14 @@ export function PortfolioSimulatorPage() {
     if (inputKey === prevInputsRef.current) return;
     prevInputsRef.current = inputKey;
 
-    setIsSimulating(true);
-    // Run in next tick so the loading spinner renders
-    if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
-    simulationTimerRef.current = setTimeout(() => {
-      try {
-        const res = runSimulation({
-          startingBalance: 0,
-          cashFlows,
-          volatility,
-          numPaths,
-          endOverride: simulationEnd,
-        });
-        setResult(res);
-      } finally {
-        setIsSimulating(false);
-      }
-    }, 50);
-
-    return () => {
-      if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
-    };
+    const res = runSimulation({
+      startingBalance: 0,
+      cashFlows,
+      volatility,
+      numPaths,
+      endOverride: simulationEnd,
+    });
+    setResult(res);
   }, [cashFlows, volatility, numPaths, simulationEnd]);
 
   // ── Scenario handlers ──
@@ -1078,13 +1059,6 @@ export function PortfolioSimulatorPage() {
 
         {/* ════════ RIGHT COLUMN ════════ */}
         <div className="ps-right" style={{ position: 'relative' }}>
-          {/* Loading overlay */}
-          {isSimulating && (
-            <div className="ps-sim-loading-overlay">
-              <LoadingCoin text="Simulating…" />
-            </div>
-          )}
-
           {/* Results Summary */}
           {result && (
             <div className="ps-card ps-results-card">

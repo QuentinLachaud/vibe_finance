@@ -5,7 +5,6 @@ import { doc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
-import { usePersistedState } from '../hooks/usePersistedState';
 import { db } from '../config/firebase';
 import type { CurrencyCode } from '../types';
 import type { ThemeMode } from '../types';
@@ -32,7 +31,6 @@ export function SettingsPage() {
   const navigate = useNavigate();
 
   const [simulationYears, setSimulationYears] = useState<number>(getSavedSimulationYears);
-  const [numPaths, setNumPaths] = usePersistedState<number>('vf-ps-num-paths', 500);
   const [status, setStatus] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -228,21 +226,7 @@ export function SettingsPage() {
           <h2 className="settings-card-title">Advanced Simulation</h2>
           <div className="settings-field">
             <label className="settings-label">Simulation Paths</label>
-            <p className="settings-note" style={{ marginBottom: 8 }}>More paths = smoother results but slower.</p>
-            <div className="settings-segmented">
-              <button
-                className={`settings-segment ${numPaths === 500 ? 'settings-segment--active' : ''}`}
-                onClick={() => setNumPaths(500)}
-              >
-                500
-              </button>
-              <button
-                className={`settings-segment ${numPaths === 2000 ? 'settings-segment--active' : ''}`}
-                onClick={() => setNumPaths(2000)}
-              >
-                2,000
-              </button>
-            </div>
+            <p className="settings-note">Simulation paths are fixed at 500 for performance.</p>
           </div>
         </section>
 
