@@ -4299,69 +4299,6 @@ body {
   }
 }
 
-/* ── Take Home Pay — Mobile fixes ── */
-@media (max-width: 480px) {
-  .thp-salary-row {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .thp-salary-input {
-    min-width: 0;
-    font-size: 18px;
-    padding: 10px 12px;
-  }
-
-  .thp-period-toggle {
-    width: 100%;
-  }
-
-  .thp-period-btn {
-    flex: 1;
-    text-align: center;
-  }
-
-  .thp-region-toggle {
-    flex-direction: column;
-  }
-
-  .thp-region-btn {
-    padding: 10px 14px;
-  }
-
-  .thp-region-btn:first-child {
-    border-right: none;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .thp-sacrifice-inputs {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .thp-sacrifice-or {
-    text-align: center;
-  }
-
-  .thp-result-amount {
-    font-size: 32px;
-  }
-
-  .thp-kpi-row {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .thp-breakdown-grid {
-    gap: 4px 10px;
-    font-size: 11px;
-  }
-
-  .thp-breakdown-cell {
-    font-size: 11px;
-  }
-}
-
 /* Left column wraps input card + breakdown card */
 .thp-left-col {
   display: flex;
@@ -4837,17 +4774,6 @@ body {
 
 .savings-invest-cta {
   margin-top: 24px;
-  max-width: 480px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* ═══════════════════════════════════════════════
-   Compound Interest — Simulate CTA
-   ═══════════════════════════════════════════════ */
-
-.ci-simulate-cta {
-  margin-top: 32px;
   max-width: 480px;
   margin-left: auto;
   margin-right: auto;
