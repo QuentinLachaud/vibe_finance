@@ -62,6 +62,54 @@ const ASSET_COLORS = [
   '#a855f7', '#14b8a6', '#f97316', '#6366f1',
 ];
 
+// ── Example assets shown when user has no data ──
+const EXAMPLE_ASSETS: Asset[] = [
+  {
+    id: 'example-1', emoji: '🏠', name: 'Primary Residence', type: 'Property',
+    snapshots: [
+      { date: '2023-01-15', value: 280000 },
+      { date: '2023-07-01', value: 290000 },
+      { date: '2024-01-15', value: 305000 },
+      { date: '2024-07-01', value: 315000 },
+      { date: '2025-01-15', value: 330000 },
+    ],
+    createdAt: '', updatedAt: '',
+  },
+  {
+    id: 'example-2', emoji: '📈', name: 'ISA Portfolio', type: 'Investments',
+    snapshots: [
+      { date: '2023-01-15', value: 18000 },
+      { date: '2023-07-01', value: 22000 },
+      { date: '2024-01-15', value: 28000 },
+      { date: '2024-07-01', value: 34000 },
+      { date: '2025-01-15', value: 41000 },
+    ],
+    createdAt: '', updatedAt: '',
+  },
+  {
+    id: 'example-3', emoji: '💰', name: 'Emergency Fund', type: 'Cash & Savings',
+    snapshots: [
+      { date: '2023-01-15', value: 5000 },
+      { date: '2023-07-01', value: 7500 },
+      { date: '2024-01-15', value: 10000 },
+      { date: '2024-07-01', value: 10000 },
+      { date: '2025-01-15', value: 12000 },
+    ],
+    createdAt: '', updatedAt: '',
+  },
+  {
+    id: 'example-4', emoji: '🏦', name: 'Workplace Pension', type: 'Pension',
+    snapshots: [
+      { date: '2023-01-15', value: 14000 },
+      { date: '2023-07-01', value: 18000 },
+      { date: '2024-01-15', value: 23000 },
+      { date: '2024-07-01', value: 27000 },
+      { date: '2025-01-15', value: 32000 },
+    ],
+    createdAt: '', updatedAt: '',
+  },
+];
+
 const TYPE_COLORS: Record<string, string> = {
   Property: '#22d3ee',
   'Cash & Savings': '#10b981',
@@ -894,15 +942,43 @@ export function NetWorthPage() {
           )}
 
           {assets.length === 0 && !showForm && (
-            <div className="nw-empty">
-              <p>No assets yet. Add your first asset to start tracking your net worth.</p>
-              <button
-                className="nw-add-btn nw-add-btn--large"
-                onClick={() => setShowForm(true)}
-              >
-                <span className="nw-add-icon">+</span>
-                <span>Add Asset</span>
-              </button>
+            <div className="nw-empty nw-empty--showcase">
+              <p className="nw-empty-intro">Here's what your Net Worth dashboard could look like:</p>
+
+              {/* Example chart preview (blurred overlay) */}
+              <div className="nw-example-preview">
+                <NetWorthChart assets={EXAMPLE_ASSETS} currencyCode={currency.code} />
+                <div className="nw-example-overlay" />
+              </div>
+
+              {/* Example asset cards */}
+              <div className="nw-example-assets">
+                {EXAMPLE_ASSETS.map((asset, i) => (
+                  <div key={asset.id} className="nw-example-asset-card">
+                    <span className="nw-asset-emoji" style={{ background: `${ASSET_COLORS[i]}18` }}>{asset.emoji}</span>
+                    <div className="nw-asset-info">
+                      <span className="nw-asset-name">{asset.name}</span>
+                      <span className="nw-asset-type">{asset.type}</span>
+                    </div>
+                    <span className="nw-asset-value">{formatCurrency(asset.snapshots[asset.snapshots.length - 1].value, currency.code)}</span>
+                  </div>
+                ))}
+                <div className="nw-example-overlay nw-example-overlay--assets" />
+              </div>
+
+              <p className="nw-empty-prompt">Add your first asset to get started!</p>
+
+              {/* Animated add button */}
+              <div className="nw-add-pulse-wrapper">
+                <div className="nw-add-pulse-ring" />
+                <button
+                  className="nw-add-btn nw-add-btn--large nw-add-btn--animated"
+                  onClick={() => setShowForm(true)}
+                >
+                  <span className="nw-add-icon">+</span>
+                  <span>Add Your First Asset</span>
+                </button>
+              </div>
             </div>
           )}
 

@@ -4559,3 +4559,147 @@ body {
   color: var(--accent-primary);
 }
 
+/* ═══════════════════════════════════════════════
+   Savings Calculator — Invest CTA
+   ═══════════════════════════════════════════════ */
+
+.savings-invest-cta {
+  margin-top: 24px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ═══════════════════════════════════════════════
+   Cash Flow — Empty Warning Popup
+   ═══════════════════════════════════════════════ */
+
+.ps-empty-warning {
+  text-align: center;
+}
+
+.ps-empty-warning-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  animation: ps-warn-bounce 0.4s ease;
+}
+
+@keyframes ps-warn-bounce {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════
+   Net Worth — Empty State Example Preview
+   ═══════════════════════════════════════════════ */
+
+.nw-empty--showcase {
+  padding: 24px 16px 32px;
+}
+
+.nw-empty-intro {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.nw-empty-prompt {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+/* Example preview wrapper */
+.nw-example-preview {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 20px;
+  pointer-events: none;
+}
+
+.nw-example-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, var(--bg-primary) 100%);
+  pointer-events: none;
+}
+
+.nw-example-overlay--assets {
+  background: linear-gradient(180deg, transparent 0%, var(--bg-primary) 95%);
+}
+
+/* Example asset cards */
+.nw-example-assets {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.nw-example-asset-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.nw-example-asset-card .nw-asset-value {
+  margin-left: auto;
+}
+
+/* Animated add button with pulse ring */
+.nw-add-pulse-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.nw-add-pulse-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--accent-primary);
+  opacity: 0;
+  animation: nw-pulse-ring 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+.nw-add-btn--animated {
+  animation: nw-btn-glow 2s ease-in-out infinite;
+}
+
+@keyframes nw-pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
+@keyframes nw-btn-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--accent-primary);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  }
+}
+

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../state/CurrencyContext';
 import { useCalculator } from '../state/CalculatorContext';
 import { formatCurrency } from '../utils/currency';
@@ -28,6 +29,7 @@ const CHART_COLORS = [
 export function CalculatorPage() {
   const { state } = useCalculator();
   const { currency } = useCurrency();
+  const navigate = useNavigate();
 
   const monthlyIncome = normaliseToMonthly(
     state.income,
@@ -123,6 +125,15 @@ export function CalculatorPage() {
           currency={currency}
         />
       </div>
+
+      {/* CTA: bridge to portfolio simulator */}
+      {savings > 0 && (
+        <div className="savings-invest-cta">
+          <button className="thp-cta" onClick={() => navigate('/portfolio')}>
+            See how you could invest {formatCurrency(savings, currency.code)}/mo →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

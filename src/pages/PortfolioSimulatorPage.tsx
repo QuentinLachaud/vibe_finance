@@ -39,7 +39,7 @@ function getDefaultSimulationYears(): number {
   } catch {
     // ignore storage errors
   }
-  return 30;
+  return 35;
 }
 
 // SavedScenario is imported from ../types
@@ -180,6 +180,7 @@ function CashFlowForm({ initial, currencySymbol, savedLabels, onSave, onCancel, 
   const [startDate, setStartDate] = useState(initial?.startDate ?? currentMonth());
   const [endDate, setEndDate] = useState(initial?.endDate ?? addMonths(currentMonth(), 180));
   const [frequency, setFrequency] = useState<'monthly' | 'annually'>(initial?.frequency ?? 'monthly');
+  const [showEmptyWarning, setShowEmptyWarning] = useState(false);
 
   // When type changes and we're not editing, reset to blank
   useEffect(() => {
@@ -262,6 +263,16 @@ function CashFlowForm({ initial, currencySymbol, savedLabels, onSave, onCancel, 
   }, [onDirtyChange]);
 
   const handleSubmit = () => {
+    // Validate: for recurring, at least one of periodic amount or lump must be set
+    if (isRecurring && amount <= 0 && startingValue <= 0) {
+      setShowEmptyWarning(true);
+      return;
+    }
+    // For one-off, amount must be set
+    if (!isRecurring && amount <= 0) {
+      setShowEmptyWarning(true);
+      return;
+    }
     const finalLabel = label || (type === 'one-off' ? 'One-off' : type === 'recurring-deposit' ? 'Deposit' : 'Withdrawal');
     if (label.trim()) onLabelSaved?.(label.trim());
     onSave({
@@ -448,6 +459,25 @@ function CashFlowForm({ initial, currencySymbol, savedLabels, onSave, onCancel, 
           {isEditing ? 'Save Changes' : 'Add Cash Flow'}
         </button>
       </div>
+
+      {/* Empty amount warning popup */}
+      {showEmptyWarning && (
+        <div className="confirm-overlay" onClick={() => setShowEmptyWarning(false)}>
+          <div className="confirm-dialog ps-empty-warning" onClick={(e) => e.stopPropagation()}>
+            <div className="ps-empty-warning-icon">⚠️</div>
+            <p className="confirm-message">
+              {isRecurring
+                ? 'Please enter a periodic amount or a lump sum before saving.'
+                : 'Please enter an amount before saving.'}
+            </p>
+            <div className="confirm-actions">
+              <button className="confirm-btn confirm-btn--save" onClick={() => setShowEmptyWarning(false)}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -477,6 +507,7 @@ export function PortfolioSimulatorPage() {
   const [editingCashFlow, setEditingCashFlow] = useState<CashFlow | null>(null);
   const [isCashFlowFormDirty, setIsCashFlowFormDirty] = useState(false);
   const submitCashFlowFormRef = useRef<(() => void) | null>(null);
+  const cashFlowFormRef = useRef<HTMLDivElement>(null);
   const pendingSwitchRef = useRef<string | null>(null);
   const [pendingEditId, setPendingEditId] = useState<string | null>(null);
   const [horizonMode, setHorizonMode] = usePersistedState<'date' | 'years'>('vf-ps-horizon-mode', 'years');
@@ -618,20 +649,28 @@ export function PortfolioSimulatorPage() {
   );
 
   // ── Cash flow handlers ──
+  const scrollToForm = useCallback(() => {
+    setTimeout(() => {
+      cashFlowFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, []);
+
   const doSwitchTo = useCallback((id: string) => {
     const cf = cashFlows.find((c) => c.id === id);
     if (cf) {
       setIsCashFlowFormDirty(false);
       setEditingCashFlow(cf);
       setShowForm(true);
+      scrollToForm();
     }
-  }, [cashFlows]);
+  }, [cashFlows, scrollToForm]);
 
   const handleAddCashFlow = useCallback(() => {
     setIsCashFlowFormDirty(false);
     setEditingCashFlow(null);
     setShowForm(true);
-  }, []);
+    scrollToForm();
+  }, [scrollToForm]);
 
   const handleEditCashFlow = useCallback(
     (id: string) => {
@@ -921,7 +960,7 @@ export function PortfolioSimulatorPage() {
 
           {/* Cash Flow Form */}
           {showForm && (
-            <div className="ps-card ps-card--form">
+            <div className="ps-card ps-card--form" ref={cashFlowFormRef}>
               <CashFlowForm
                 initial={editingCashFlow ?? undefined}
                 currencySymbol={currency.symbol}

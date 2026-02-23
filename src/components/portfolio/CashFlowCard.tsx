@@ -32,6 +32,9 @@ export function CashFlowCard({ cashFlow, currencyCode, onEdit, onDelete, onToggl
   const config = TYPE_CONFIG[cashFlow.type];
   const isRecurring = cashFlow.type !== 'one-off';
   const freqLabel = cashFlow.frequency === 'annually' ? '/ year' : '/ month';
+  const hasPeriodicAmount = cashFlow.amount > 0;
+  const hasLump = (cashFlow.startingValue ?? 0) > 0;
+  const isLumpOnly = isRecurring && !hasPeriodicAmount && hasLump;
 
   return (
     <div className={`ps-scenario-card ${config.className} ${!cashFlow.enabled ? 'ps-scenario-card--disabled' : ''}`}>
@@ -65,16 +68,25 @@ export function CashFlowCard({ cashFlow, currencyCode, onEdit, onDelete, onToggl
         <span className="ps-scenario-type">{cashFlow.label || config.label}</span>
       </div>
 
-      <div className="ps-scenario-amount">
-        {formatCurrency(cashFlow.amount, currencyCode)}
-        {isRecurring && <span className="ps-scenario-freq"> {freqLabel}</span>}
-      </div>
-
-      {isRecurring && (cashFlow.startingValue ?? 0) > 0 && (
-        <div className="ps-scenario-growth">
-          {cashFlow.type === 'recurring-withdrawal' ? 'Lump at start:' : 'Starting value:'}{' '}
+      {isLumpOnly ? (
+        <div className="ps-scenario-amount">
           {formatCurrency(cashFlow.startingValue ?? 0, currencyCode)}
+          <span className="ps-scenario-freq"> lump sum</span>
         </div>
+      ) : (
+        <>
+          <div className="ps-scenario-amount">
+            {formatCurrency(cashFlow.amount, currencyCode)}
+            {isRecurring && <span className="ps-scenario-freq"> {freqLabel}</span>}
+          </div>
+
+          {isRecurring && hasLump && (
+            <div className="ps-scenario-growth">
+              {cashFlow.type === 'recurring-withdrawal' ? 'Lump at start:' : 'Starting value:'}{' '}
+              {formatCurrency(cashFlow.startingValue ?? 0, currencyCode)}
+            </div>
+          )}
+        </>
       )}
 
       <div className="ps-scenario-dates">

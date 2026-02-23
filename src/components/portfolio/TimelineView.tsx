@@ -41,6 +41,13 @@ const TYPE_INFO = {
 /** Build a compact amount string like "+£1,666/mo" */
 function amountStr(s: CashFlow, currencyCode: CurrencyCode): string {
   const info = TYPE_INFO[s.type];
+  const isRecurring = s.type !== 'one-off';
+  const hasPeriodicAmount = s.amount > 0;
+  const hasLump = (s.startingValue ?? 0) > 0;
+  // If periodic is £0 but there's a lump, show the lump instead
+  if (isRecurring && !hasPeriodicAmount && hasLump) {
+    return `${info.sign}${formatCurrency(s.startingValue!, currencyCode)} lump`;
+  }
   const freqLabel = s.type === 'one-off' ? '' : s.frequency === 'annually' ? '/yr' : '/mo';
   return `${info.sign}${formatCurrency(s.amount, currencyCode)}${freqLabel}`;
 }
