@@ -4,6 +4,9 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
   type User,
 } from 'firebase/auth';
 import { auth, firebaseEnabled } from '../config/firebase';
@@ -11,11 +14,18 @@ import { syncUserProfile } from '../services/userDataService';
 
 // ── Types ──
 
+interface AuthResult {
+  ok: boolean;
+  message?: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   authEnabled: boolean;
-  signInWithGoogle: () => Promise<{ ok: boolean; message?: string }>;
+  signInWithGoogle: () => Promise<AuthResult>;
+  signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<AuthResult>;
+  signInWithEmail: (email: string, password: string) => Promise<AuthResult>;
   logout: () => Promise<void>;
 }
 
@@ -53,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const signInWithGoogle = async (): Promise<{ ok: boolean; message?: string }> => {
+  const signInWithGoogle = async (): Promise<AuthResult> => {
     if (!firebaseEnabled || !auth) {
       return {
         ok: false,
@@ -95,17 +105,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signUpWithEmail = async (email: string, password: string, displayName?: string): Promise<AuthResult> => {
+    if (!firebaseEnabled || !auth) {
+      return { ok: false, message: 'Firebase is not configured.' };
+    }
+    try {
+      const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
+      if (displayName) {
+        await updateProfile(newUser, { displayName });
+      }
+      return { ok: true };
+    } catch (error: unknown) {
+      const code = (error as { code?: string }).code ?? '';
+      const raw = (error as { message?: string }).message ?? '';
+
+      const messageMap: Record<string, string> = {
+        'auth/email-already-in-use': 'An account with this email already exists. Try signing in instead.',
+        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/weak-password': 'Password must be at least 6 characters.',
+        'auth/operation-not-allowed': 'Email/password sign-up is not enabled in Firebase Console.',
+      };
+
+      return { ok: false, message: messageMap[code] || `Sign-up failed (${code || 'unknown'}): ${raw}` };
+    }
+  };
+
+  const signInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
+    if (!firebaseEnabled || !auth) {
+      return { ok: false, message: 'Firebase is not configured.' };
+    }
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return { ok: true };
+    } catch (error: unknown) {
+      const code = (error as { code?: string }).code ?? '';
+      const raw = (error as { message?: string }).message ?? '';
+
+      const messageMap: Record<string, string> = {
+        'auth/user-not-found': 'No account found with this email. Try signing up.',
+        'auth/wrong-password': 'Incorrect password. Please try again.',
+        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/invalid-credential': 'Invalid email or password. Please try again.',
+        'auth/too-many-requests': 'Too many failed attempts. Please wait a moment and try again.',
+        'auth/user-disabled': 'This account has been disabled.',
+      };
+
+      return { ok: false, message: messageMap[code] || `Sign-in failed (${code || 'unknown'}): ${raw}` };
+    }
+  };
+
   const logout = async () => {
     if (!auth) return;
     try {
       await signOut(auth);
+      // Clear all app-cached data from localStorage
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('vf-') || key.startsWith('vibe-finance'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+        localStorage.removeItem('vf-calculator');
+      } catch {
+        // ignore storage errors
+      }
     } catch (error) {
       console.error('[auth] sign-out failed:', error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, authEnabled: firebaseEnabled, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, authEnabled: firebaseEnabled, signInWithGoogle, signUpWithEmail, signInWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -30,29 +30,119 @@ function GoogleIcon() {
 }
 
 export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
-  const { signInWithGoogle, authEnabled } = useAuth();
+  const { signInWithGoogle, signUpWithEmail, signInWithEmail, authEnabled } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSuccess = () => {
+    if (onSuccess) onSuccess();
+    else onClose();
+  };
 
   const handleGoogleLogin = async () => {
     setErrorMessage(null);
     const result = await signInWithGoogle();
     if (result.ok) {
-      if (onSuccess) onSuccess();
-      else onClose();
+      handleSuccess();
       return;
     }
     setErrorMessage(result.message || 'Unable to sign in with Google.');
   };
 
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) return;
+    setErrorMessage(null);
+    setSubmitting(true);
+
+    try {
+      const result = mode === 'signup'
+        ? await signUpWithEmail(email.trim(), password, displayName.trim() || undefined)
+        : await signInWithEmail(email.trim(), password);
+
+      if (result.ok) {
+        handleSuccess();
+        return;
+      }
+      setErrorMessage(result.message || `Unable to ${mode === 'signup' ? 'create account' : 'sign in'}.`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="login-overlay" onClick={onClose}>
       <div className="login-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="login-title">Welcome to TakeHomeCalc</h2>
-        <p className="login-subtitle">Sign in to save your data and access it anywhere</p>
+        <h2 className="login-title">
+          {mode === 'login' ? 'Welcome back' : 'Create your account'}
+        </h2>
+        <p className="login-subtitle">
+          {mode === 'login'
+            ? 'Sign in to access your saved data'
+            : 'Sign up to save your data across devices'}
+        </p>
 
         <button className="login-google-btn" onClick={handleGoogleLogin}>
           <GoogleIcon />
           Continue with Google
+        </button>
+
+        <div className="login-divider">
+          <span>or</span>
+        </div>
+
+        <form className="login-email-form" onSubmit={handleEmailSubmit}>
+          {mode === 'signup' && (
+            <input
+              type="text"
+              className="login-input"
+              placeholder="Display name (optional)"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              autoComplete="name"
+            />
+          )}
+          <input
+            type="email"
+            className="login-input"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+          <input
+            type="password"
+            className="login-input"
+            placeholder={mode === 'signup' ? 'Password (min 6 characters)' : 'Password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+          />
+          <button
+            type="submit"
+            className="login-email-submit"
+            disabled={submitting || !email.trim() || !password.trim()}
+          >
+            {submitting
+              ? 'Please wait…'
+              : mode === 'signup'
+                ? 'Create Account'
+                : 'Sign In with Email'}
+          </button>
+        </form>
+
+        <button
+          className="login-switch-mode"
+          onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setErrorMessage(null); }}
+        >
+          {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
         </button>
 
         {!authEnabled && (
@@ -66,10 +156,6 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             {errorMessage}
           </p>
         )}
-
-        <button className="login-email-btn" disabled>
-          ✉️ Continue with Email — Coming soon
-        </button>
 
         <button className="login-close-btn" onClick={onClose}>
           Maybe later

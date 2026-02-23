@@ -202,7 +202,7 @@ export function TakeHomePayPage() {
     // Set the calculator income to monthly net pay
     dispatch({ type: 'SET_INCOME', payload: result.netMonthly });
     dispatch({ type: 'SET_INCOME_FREQUENCY', payload: 'monthly' });
-    navigate('/');
+    navigate('/calculator');
   };
 
   return (
