@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../state/CurrencyContext';
 import { useCalculator } from '../state/CalculatorContext';
@@ -11,9 +12,6 @@ import {
 import { IncomeSection } from '../components/calculator/IncomeSection';
 import { ExpensesSection } from '../components/calculator/ExpensesSection';
 import { DonutChart, DonutLegend } from '../components/DonutChart';
-import { SavingsRateCard } from '../components/calculator/SavingsRateCard';
-import { SavingsOverview } from '../components/calculator/SavingsOverview';
-// PageSubNav removed – tabs are only in the top header ribbon
 
 const CHART_COLORS = [
   '#3b82f6', // Housing – blue
@@ -26,38 +24,57 @@ const CHART_COLORS = [
   '#f97316', // extra – orange
 ];
 
+type ChartView = 'expenses' | 'flow';
+
 export function CalculatorPage() {
   const { state } = useCalculator();
   const { currency } = useCurrency();
   const navigate = useNavigate();
+  const [chartView, setChartView] = useState<ChartView>('expenses');
 
-  const monthlyIncome = normaliseToMonthly(
-    state.income,
-    state.incomeFrequency,
-  );
+  const monthlyIncome = normaliseToMonthly(state.income, state.incomeFrequency);
   const expTotal = totalExpenses(state.expenses);
   const savings = monthlySavings(monthlyIncome, state.expenses);
   const rate = savingsRate(monthlyIncome, state.expenses);
 
-  // Chart segments
+  // ── Expense breakdown donut ──
   const expenseSegments = state.expenses.map((exp, i) => ({
     label: exp.name,
     value: exp.amount,
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  // Add savings slice
-  const savingsColor = '#22d3ee'; // cyan
-  const chartSegments =
+  const savingsColor = '#22d3ee';
+  const expenseChartSegments =
     savings > 0
       ? [...expenseSegments, { label: 'Savings', value: savings, color: savingsColor }]
       : expenseSegments;
 
-  const legendItems = chartSegments.map((seg) => ({
+  const expenseLegend = expenseChartSegments.map((seg) => ({
     label: seg.label,
     value: formatCurrency(seg.value, currency.code),
     color: seg.color,
   }));
+
+  // ── Income vs Outflow donut ──
+  const flowSegments = [
+    ...(savings > 0 ? [{ label: 'Savings', value: savings, color: '#22d3ee' }] : []),
+    ...(expTotal > 0 ? [{ label: 'Expenses', value: expTotal, color: '#ef4444' }] : []),
+  ];
+
+  const flowLegend = flowSegments.map((seg) => ({
+    label: seg.label,
+    value: formatCurrency(seg.value, currency.code),
+    color: seg.color,
+  }));
+
+  const isExpenseView = chartView === 'expenses';
+  const activeSegments = isExpenseView ? expenseChartSegments : flowSegments;
+  const activeLegend = isExpenseView ? expenseLegend : flowLegend;
+  const centerVal = isExpenseView
+    ? formatCurrency(expTotal, currency.code)
+    : formatCurrency(monthlyIncome, currency.code);
+  const centerLbl = isExpenseView ? 'Total Expenses' : 'Monthly Income';
 
   return (
     <div className="calculator-page">
@@ -68,8 +85,6 @@ export function CalculatorPage() {
         </p>
       </div>
 
-
-
       <div className="calculator-grid">
         {/* Left column – inputs */}
         <div className="calculator-left">
@@ -77,53 +92,51 @@ export function CalculatorPage() {
           <ExpensesSection />
         </div>
 
-        {/* Right column – chart & legend */}
+        {/* Right column – donut & summary */}
         <div className="calculator-right">
-          <div className="chart-wrapper">
-            {savings > 0 && (
-              <div className="chart-savings-label">
-                <span className="chart-savings-amount">
-                  {formatCurrency(savings, currency.code)}
-                </span>
-                <span className="chart-savings-text">Savings</span>
-              </div>
-            )}
-
-            <DonutChart
-              segments={chartSegments}
-              centerValue={formatCurrency(expTotal, currency.code)}
-              centerLabel="Total Expenses"
-              size={240}
-            />
-
-            {expenseSegments.length > 0 && (
-              <div className="chart-housing-label">
-                <span>{formatCurrency(state.expenses[0]?.amount ?? 0, currency.code)}</span>
-                <span>{state.expenses[0]?.name ?? ''}</span>
-              </div>
-            )}
+          {/* Toggle between expense breakdown and income vs outflow */}
+          <div className="sc-chart-toggle">
+            <button
+              className={`sc-chart-toggle-btn${isExpenseView ? ' sc-chart-toggle-btn--active' : ''}`}
+              onClick={() => setChartView('expenses')}
+            >
+              By Category
+            </button>
+            <button
+              className={`sc-chart-toggle-btn${!isExpenseView ? ' sc-chart-toggle-btn--active' : ''}`}
+              onClick={() => setChartView('flow')}
+            >
+              Income vs Outflow
+            </button>
           </div>
 
-          <DonutLegend items={legendItems} />
+          <DonutChart
+            segments={activeSegments}
+            centerValue={centerVal}
+            centerLabel={centerLbl}
+            size={240}
+          />
+
+          <DonutLegend items={activeLegend} />
+
+          {/* Compact summary strip */}
+          <div className="sc-summary">
+            <div className="sc-summary-item">
+              <span className="sc-summary-val sc-summary-val--accent">{rate}%</span>
+              <span className="sc-summary-lbl">Savings Rate</span>
+            </div>
+            <div className="sc-summary-divider" />
+            <div className="sc-summary-item">
+              <span className="sc-summary-val">{formatCurrency(savings, currency.code)}</span>
+              <span className="sc-summary-lbl">Monthly Savings</span>
+            </div>
+            <div className="sc-summary-divider" />
+            <div className="sc-summary-item">
+              <span className="sc-summary-val">{formatCurrency(savings * 12, currency.code)}</span>
+              <span className="sc-summary-lbl">Annual Savings</span>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Bottom section: Savings summary */}
-      <div className="savings-section">
-        <SavingsRateCard
-          monthlySavings={savings}
-          monthlyExpenses={expTotal}
-          rate={rate}
-          currency={currency}
-        />
-
-        <SavingsOverview
-          income={monthlyIncome}
-          expenses={expTotal}
-          savings={savings}
-          rate={rate}
-          currency={currency}
-        />
       </div>
 
       {/* CTA: bridge to compound interest calculator */}
@@ -132,7 +145,6 @@ export function CalculatorPage() {
           <button
             className="thp-cta"
             onClick={() => {
-              // Pre-fill compound interest page: 0 initial, savings as monthly deposit
               localStorage.setItem(
                 'vf-compound-interest',
                 JSON.stringify({
