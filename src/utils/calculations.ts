@@ -28,5 +28,5 @@ export function savingsRate(
 ): number {
   if (monthlyIncome <= 0) return 0;
   const savings = monthlySavings(monthlyIncome, expenses);
-  return Math.round((savings / monthlyIncome) * 100);
+  return Math.max(0, Math.round((savings / monthlyIncome) * 100));
 }
