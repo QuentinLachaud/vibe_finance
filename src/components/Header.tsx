@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
@@ -33,7 +33,10 @@ export function Header() {
   const { user, loading } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const mobileNavRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
 
   // Close user menu on click outside
   useEffect(() => {
@@ -47,6 +50,40 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showMenu]);
 
+  // Close mobile nav on route change
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  // Close mobile nav on click outside
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        mobileNavRef.current &&
+        !mobileNavRef.current.contains(e.target as Node)
+      ) {
+        setMobileNavOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [mobileNavOpen]);
+
+  // Lock body scroll when mobile nav is open
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileNavOpen]);
+
+  const toggleMobileNav = useCallback(() => {
+    setMobileNavOpen((v) => !v);
+  }, []);
+
   return (
     <header className="app-header">
       <div className="header-inner">
@@ -55,8 +92,22 @@ export function Header() {
           <span className="logo-text">TakeHomeCalc<span className="logo-tld">.co.uk</span></span>
         </div>
 
-        {/* Navigation */}
-        <nav className="header-nav">
+        {/* Hamburger toggle (mobile only) */}
+        <button
+          className="mobile-menu-toggle"
+          onClick={toggleMobileNav}
+          aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={mobileNavOpen}
+        >
+          <span className={`hamburger-icon ${mobileNavOpen ? 'hamburger-icon--open' : ''}`}>
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
+
+        {/* Desktop Navigation */}
+        <nav className="header-nav header-nav--desktop">
           {NAV_ITEMS.filter((item) => !item.isSettings).map((item) => (
             <NavLink
               key={item.path}
@@ -70,11 +121,11 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Settings (gear icon, far right of nav) */}
+        {/* Settings (gear icon, desktop) */}
         <NavLink
           to="/settings"
           className={({ isActive }) =>
-            `nav-link nav-link--settings ${isActive ? 'nav-link--active' : ''}`
+            `nav-link nav-link--settings header-nav--desktop ${isActive ? 'nav-link--active' : ''}`
           }
           aria-label="Settings"
         >
@@ -84,7 +135,7 @@ export function Header() {
           </svg>
         </NavLink>
 
-        {/* Right controls */}
+        {/* Right controls (always visible) */}
         <div className="header-controls">
           {/* Theme toggle */}
           <button
@@ -155,6 +206,44 @@ export function Header() {
           )}
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileNavOpen && (
+        <div className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} />
+      )}
+      <div
+        ref={mobileNavRef}
+        className={`mobile-nav-drawer ${mobileNavOpen ? 'mobile-nav-drawer--open' : ''}`}
+      >
+        <nav className="mobile-nav-list">
+          {NAV_ITEMS.filter((item) => !item.isSettings).map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `mobile-nav-link ${isActive ? 'mobile-nav-link--active' : ''}${item.isGold ? ' mobile-nav-link--gold' : ''}`
+              }
+              onClick={() => setMobileNavOpen(false)}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `mobile-nav-link mobile-nav-link--settings ${isActive ? 'mobile-nav-link--active' : ''}`
+            }
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <svg className="icon-gear" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            Settings
+          </NavLink>
+        </nav>
+      </div>
+
       {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
     </header>
   );
