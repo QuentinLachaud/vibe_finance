@@ -510,6 +510,15 @@ body {
 }
 
 .sc-income-top {
+/* ── Income Section ── */
+.sc-income {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.sc-income-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -522,13 +531,101 @@ body {
   color: var(--text-secondary);
 }
 
-/* ── Frequency Toggle ── */
+/* Frequency Toggle */
 .sc-freq-toggle {
   display: flex;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border-color);
   background: var(--bg-card-alt, var(--bg-card));
+}
+
+.sc-freq-btn {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  line-height: 1.2;
+}
+
+.sc-freq-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover, rgba(255,255,255,0.04));
+}
+
+.sc-freq-btn--active {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.sc-freq-btn--active:hover {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.sc-income-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.sc-income-symbol {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sc-income-field input {
+  font-size: 36px !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  text-align: center !important;
+  font-variant-numeric: tabular-nums;
+  max-width: 280px;
+}
+
+.sc-income-field input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 480px) {
+  .sc-income-field input {
+    font-size: 44px !important;
+    max-width: 100%;
+  }
+  .sc-income-symbol {
+    font-size: 30px;
+  }
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.income-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card-alt, var(--bg-card));
+}
+
+.income-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sc-freq-btn {
@@ -629,7 +726,7 @@ body {
   flex-shrink: 0;
 }
 
-/* ── Inline name edit ── */
+/* Inline name edit */
 .expense-name-edit {
   flex: 1;
   min-width: 60px;
@@ -638,6 +735,24 @@ body {
   color: var(--text-primary);
   background: transparent;
   border: none;
+  border-bottom: 1.5px solid var(--accent-primary);
+  padding: 2px 0;
+  outline: none;
+  font-family: inherit;
+}
+
+/* Custom badge */
+.expense-custom-badge {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+  border-radius: 4px;
+  padding: 1px 5px;
+  vertical-align: middle;
   border-bottom: 1.5px solid var(--accent-primary);
   padding: 2px 0;
   outline: none;
@@ -698,9 +813,13 @@ body {
 }
 
 .expense-add-card {
+/* ── Expense Add Card ── */
+.expense-add-card {
   display: flex;
   flex-direction: column;
+  flex-direction: column;
   gap: 10px;
+  background: var(--bg-card);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -730,6 +849,101 @@ body {
   background-repeat: no-repeat;
   background-position: right 10px center;
   padding-right: 28px;
+  padding: 14px;
+}
+
+.expense-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expense-add-amount-row {
+  background: var(--bg-input, var(--bg-card-alt, var(--bg-card)));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+}
+
+.expense-add-currency {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.expense-add-amount-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.18s, opacity 0.18s;
+}
+
+.expense-add-cancel {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.expense-add-cancel:hover {
+  color: var(--text-secondary);
+}
+
+.expense-add-confirm {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.expense-add-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.expense-add-confirm:not(:disabled):hover {
+  opacity: 0.88;
+}
+
+/* ── Add expense trigger button ── */
+.expense-add-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: transparent;
+  outline: none;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+  width: 100%;
+  font-family: inherit;
+}
+
+.expense-add-amount-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Category select */
+.expense-cat-select {
+  flex: 1;
+  font-size: 14px;
+  font-family: inherit;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card-alt, var(--bg-card));
+  color: var(--text-primary);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
 }
 
 .expense-cat-select:focus {
@@ -737,12 +951,12 @@ body {
   border-color: var(--accent-primary);
 }
 
-/* ── Custom name input ── */
+/* Custom name input */
 .expense-custom-input {
   flex: 1;
   font-size: 14px;
   font-family: inherit;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background: var(--bg-card-alt, var(--bg-card));
@@ -756,17 +970,21 @@ body {
   border-color: var(--accent-primary);
 }
 
-/* ── Add actions ── */
+/* Add actions */
 .expense-add-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   margin-top: 2px;
+  transition: border-color 0.18s, color 0.18s;
 }
 
+.expense-add-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 .expense-add-cancel,
 .expense-add-confirm {
-  padding: 7px 18px;
+  padding: 8px 20px;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -799,7 +1017,7 @@ body {
   opacity: 0.88;
 }
 
-/* ── Add expense trigger button ── */
+/* Add expense trigger button */
 .expense-add-btn {
   width: 100%;
   padding: 10px;
@@ -1143,7 +1361,6 @@ body {
 /* ── Generic overrides for library components ── */
 /* Ensure NumberInput inside expense rows has no extra border */
 .expense-row input,
-.expense-add-form input,
 .income-input-row input {
   background-color: transparent;
   border: none;
@@ -1155,7 +1372,6 @@ body {
 }
 
 .expense-row input:focus,
-.expense-add-form input:focus,
 .income-input-row input:focus {
   outline: none;
 }
@@ -4606,12 +4822,19 @@ body {
   .thp-salary-row {
     flex-wrap: wrap;
     gap: 10px;
+    justify-content: center;
   }
 
   .thp-salary-input {
     min-width: 0;
-    font-size: 18px;
-    padding: 10px 12px;
+    font-size: 28px;
+    padding: 12px 14px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .thp-currency {
+    font-size: 24px;
   }
 
   .thp-period-toggle {
@@ -4621,6 +4844,8 @@ body {
   .thp-period-btn {
     flex: 1;
     text-align: center;
+    padding: 10px 12px;
+    font-size: 13px;
   }
 
   .thp-region-toggle {
@@ -4644,6 +4869,16 @@ body {
 
   .thp-sacrifice-or {
     text-align: center;
+  }
+
+  .thp-sacrifice-input {
+    font-size: 18px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .thp-sacrifice-input-wrap {
+    justify-content: center;
   }
 
   .thp-result-amount {
