@@ -57,8 +57,7 @@ export interface SimulationResult {
   finalDistribution: number[];
   /** % of paths that ended with value > 0. */
   survivalRate: number;
-  /** Raw simulation paths (sampled at timeStep intervals) for "see all paths" view. */
-  allPaths?: number[][];
+
 }
 
 // ── Helpers ──
@@ -247,8 +246,8 @@ function blendedMonthlyReturn(
 /**
  * Run Monte Carlo simulation.
  */
-export function runSimulation(inputs: SimulationInputs & { returnAllPaths?: boolean }): SimulationResult {
-  const { startingBalance, cashFlows: allCashFlows, volatility, numPaths, endOverride, returnAllPaths } = inputs;
+export function runSimulation(inputs: SimulationInputs): SimulationResult {
+  const { startingBalance, cashFlows: allCashFlows, volatility, numPaths, endOverride } = inputs;
   const cashFlows = allCashFlows.filter(s => s.enabled);
   const monthlyVol = volatility / 100 / Math.sqrt(12);
 
@@ -327,14 +326,6 @@ export function runSimulation(inputs: SimulationInputs & { returnAllPaths?: bool
   const finalValues = paths.map((path) => path[totalMonths]).sort((a, b) => a - b);
   const survived = finalValues.filter((v) => v > 0).length;
 
-  // Build sampled paths for "see all paths" view (sample at same intervals as timeSteps)
-  let allPathsSampled: number[][] | undefined;
-  if (returnAllPaths) {
-    allPathsSampled = paths.map((path) =>
-      timeSteps.map((ts) => path[Math.min(ts.monthIndex, totalMonths)])
-    );
-  }
-
   return {
     timeSteps,
     finalMedian: Math.round(percentile(finalValues, 50)),
@@ -344,7 +335,6 @@ export function runSimulation(inputs: SimulationInputs & { returnAllPaths?: bool
     finalP90: Math.round(percentile(finalValues, 90)),
     finalDistribution: finalValues,
     survivalRate: Math.round((survived / finalValues.length) * 100),
-    allPaths: allPathsSampled,
   };
 }
 

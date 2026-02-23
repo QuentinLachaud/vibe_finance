@@ -13,8 +13,6 @@ import {
   Cell,
   ReferenceLine,
   Label,
-  Line,
-  ComposedChart,
 } from 'recharts';
 import { formatCurrency } from '../../utils/currency';
 import type { TimeStep, SimulationResult } from '../../utils/simulationEngine';
@@ -24,7 +22,7 @@ interface MonteCarloChartProps {
   data: TimeStep[];
   result: SimulationResult;
   currencyCode: CurrencyCode;
-  showAllPaths?: 'quartiles' | 'all' | 'both';
+
 }
 
 // ── Distinct color palette for high contrast ──
@@ -189,34 +187,20 @@ function DistributionView({
   );
 }
 
-export function MonteCarloChart({ data, result, currencyCode, showAllPaths = 'quartiles' }: MonteCarloChartProps) {
+export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartProps) {
   const [flipped, setFlipped] = useState(false);
   const [hoveredLabel, setHoveredLabel] = useState('');
 
   // Pre-compute stacked band data for correct layering
   const chartData = useMemo(() => {
-    const allPaths = result.allPaths;
-    return data.map((d, i) => {
-      const row: Record<string, any> = {
-        ...d,
-        p10_base: d.p10,
-        band_10_25: Math.max(0, d.p25 - d.p10),
-        band_25_75: Math.max(0, d.p75 - d.p25),
-        band_75_90: Math.max(0, d.p90 - d.p75),
-      };
-      const wantPaths = showAllPaths === 'all' || showAllPaths === 'both';
-      if (wantPaths && allPaths) {
-        for (let p = 0; p < allPaths.length; p++) {
-          row[`path_${p}`] = allPaths[p]?.[i] ?? null;
-        }
-      }
-      return row;
-    });
-  }, [data, result.allPaths, showAllPaths]);
-
-  const wantPaths = showAllPaths === 'all' || showAllPaths === 'both';
-  const wantBands = showAllPaths === 'quartiles' || showAllPaths === 'both';
-  const pathCount = wantPaths && result.allPaths ? result.allPaths.length : 0;
+    return data.map((d) => ({
+      ...d,
+      p10_base: d.p10,
+      band_10_25: Math.max(0, d.p25 - d.p10),
+      band_25_75: Math.max(0, d.p75 - d.p25),
+      band_75_90: Math.max(0, d.p90 - d.p75),
+    }));
+  }, [data]);
 
   const handleMouseMove = useCallback((state: any) => {
     if (state?.activeLabel) {
@@ -247,7 +231,7 @@ export function MonteCarloChart({ data, result, currencyCode, showAllPaths = 'qu
         </div>
         <div className="ps-chart-container">
           <ResponsiveContainer width="100%" height={380}>
-            <ComposedChart
+            <AreaChart
               data={chartData}
               margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
               onMouseMove={handleMouseMove}
@@ -289,67 +273,45 @@ export function MonteCarloChart({ data, result, currencyCode, showAllPaths = 'qu
                 cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1 }}
               />
 
-              {/* Individual simulation paths (behind bands) */}
-              {wantPaths && Array.from({ length: pathCount }, (_, p) => (
-                <Line
-                  key={`path_${p}`}
-                  dataKey={`path_${p}`}
-                  stroke={pathCount > 1000 ? 'rgba(139, 92, 246, 0.03)' : 'rgba(139, 92, 246, 0.06)'}
-                  strokeWidth={0.5}
-                  dot={false}
-                  legendType="none"
-                  isAnimationActive={false}
-                  connectNulls
-                />
-              ))}
-
               {/* Invisible base up to p10 */}
-              {wantBands && (
-                <Area
-                  dataKey="p10_base"
-                  stackId="bands"
-                  stroke="none"
-                  fill="transparent"
-                  legendType="none"
-                  animationDuration={600}
-                />
-              )}
+              <Area
+                dataKey="p10_base"
+                stackId="bands"
+                stroke="none"
+                fill="transparent"
+                legendType="none"
+                animationDuration={600}
+              />
 
               {/* P10–P25: outer band (lower) — violet */}
-              {wantBands && (
-                <Area
-                  dataKey="band_10_25"
-                  stackId="bands"
-                  stroke="none"
-                  fill="url(#outerBandGrad)"
-                  name="10th–90th"
-                  animationDuration={600}
-                />
-              )}
+              <Area
+                dataKey="band_10_25"
+                stackId="bands"
+                stroke="none"
+                fill="url(#outerBandGrad)"
+                name="10th–90th"
+                animationDuration={600}
+              />
 
               {/* P25–P75: inner band — emerald */}
-              {wantBands && (
-                <Area
-                  dataKey="band_25_75"
-                  stackId="bands"
-                  stroke="none"
-                  fill="url(#innerBandGrad)"
-                  name="25th–75th"
-                  animationDuration={600}
-                />
-              )}
+              <Area
+                dataKey="band_25_75"
+                stackId="bands"
+                stroke="none"
+                fill="url(#innerBandGrad)"
+                name="25th–75th"
+                animationDuration={600}
+              />
 
               {/* P75–P90: outer band (upper) — violet */}
-              {wantBands && (
-                <Area
-                  dataKey="band_75_90"
-                  stackId="bands"
-                  stroke="none"
-                  fill="url(#outerBandGrad)"
-                  legendType="none"
-                  animationDuration={600}
-                />
-              )}
+              <Area
+                dataKey="band_75_90"
+                stackId="bands"
+                stroke="none"
+                fill="url(#outerBandGrad)"
+                legendType="none"
+                animationDuration={600}
+              />
 
               {/* Median line — bright cyan */}
               <Area
@@ -365,7 +327,7 @@ export function MonteCarloChart({ data, result, currencyCode, showAllPaths = 'qu
               <Legend
                 wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
               />
-            </ComposedChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>

@@ -43,7 +43,7 @@ function getDefaultSimulationYears(): number {
   } catch {
     // ignore storage errors
   }
-  return 35;
+  return 15;
 }
 
 // SavedScenario is imported from ../types
@@ -527,8 +527,7 @@ export function PortfolioSimulatorPage() {
   const DEFAULT_VOLATILITY = 15; // S&P 500 long-run annualised volatility ~15%
   const [volatility, setVolatility] = usePersistedState<number>('vf-ps-volatility', DEFAULT_VOLATILITY);
   const [numPaths] = usePersistedState<number>('vf-ps-num-paths', 500);
-  type PathDisplay = 'quartiles' | 'all' | 'both';
-  const [showAllPaths] = usePersistedState<PathDisplay>('vf-ps-show-all-paths', 'quartiles');
+
   const [showVolatilityWarning, setShowVolatilityWarning] = useState(false);
   const [pendingVolatility, setPendingVolatility] = useState<number | null>(null);
 
@@ -584,7 +583,7 @@ export function PortfolioSimulatorPage() {
       prevInputsRef.current = '';
       return;
     }
-    const inputKey = JSON.stringify({ cashFlows, volatility, numPaths, simulationEnd, showAllPaths });
+    const inputKey = JSON.stringify({ cashFlows, volatility, numPaths, simulationEnd });
     if (inputKey === prevInputsRef.current) return;
     prevInputsRef.current = inputKey;
 
@@ -599,7 +598,6 @@ export function PortfolioSimulatorPage() {
           volatility,
           numPaths,
           endOverride: simulationEnd,
-          returnAllPaths: showAllPaths === 'all' || showAllPaths === 'both',
         });
         setResult(res);
       } finally {
@@ -610,7 +608,7 @@ export function PortfolioSimulatorPage() {
     return () => {
       if (simulationTimerRef.current) clearTimeout(simulationTimerRef.current);
     };
-  }, [cashFlows, volatility, numPaths, simulationEnd, showAllPaths]);
+  }, [cashFlows, volatility, numPaths, simulationEnd]);
 
   // ── Scenario handlers ──
   const handleSaveAs = useCallback(
@@ -1131,7 +1129,7 @@ export function PortfolioSimulatorPage() {
                 data={result.timeSteps}
                 result={result}
                 currencyCode={currency.code}
-                showAllPaths={showAllPaths}
+
               />
             </div>
           )}

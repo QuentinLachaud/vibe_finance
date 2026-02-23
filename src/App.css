@@ -1133,6 +1133,21 @@ body {
   filter: brightness(1.05);
 }
 
+.settings-btn--danger {
+  background: var(--color-danger, #ef4444);
+  border-color: var(--color-danger, #ef4444);
+  color: #fff;
+}
+
+.settings-btn--danger:hover {
+  filter: brightness(1.1);
+}
+
+.settings-btn--danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .settings-note,
 .settings-status {
   font-size: 13px;
