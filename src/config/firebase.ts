@@ -3,7 +3,7 @@ import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 /* ── Read Vite env vars ── */
-const apiKey         = "AIzaSyCshexKWFewBv7NmjJUX3o6DLLc-47jX0Y"         as string | undefined;
+const apiKey         = "AIzaSyAl2bLDN0OleS72OmBCwUBQtWJRRlBOztU"         as string | undefined;
 const authDomain     = "takehomecalc-c86a7.firebaseapp.com"     as string | undefined;
 const projectId      = "takehomecalc-c86a7"      as string | undefined;
 const storageBucket  = "takehomecalc-c86a7.firebasestorage.app"  as string | undefined;
