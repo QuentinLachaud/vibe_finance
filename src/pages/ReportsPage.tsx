@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useAuth } from '../state/AuthContext';
 import { useCurrency } from '../state/CurrencyContext';
 import { formatCurrency } from '../utils/currency';
 import {
@@ -9,10 +8,9 @@ import {
   type CashFlow,
   type SimulationResult,
 } from '../utils/simulationEngine';
-import { LoginModal } from '../components/LoginModal';
 import { LoadingCoin } from '../components/LoadingCoin';
 import type { SavedScenario, CurrencyCode } from '../types';
-import { loadScenarios } from '../services/userDataService';
+import { usePersistedState } from '../hooks/usePersistedState';
 
 // ── Types ──
 
@@ -584,29 +582,13 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode): string {
 // ── Component ──
 
 export function ReportsPage() {
-  const { user } = useAuth();
   const { currency } = useCurrency();
 
-  const [scenarios, setScenarios] = useState<SavedScenario[]>([]);
-  const [loadingScenarios, setLoadingScenarios] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  // Read scenarios directly from the same persisted key the Portfolio Simulator uses
+  const [scenarios] = usePersistedState<SavedScenario[]>('vf-ps-scenarios', []);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
   const [showFormatPicker, setShowFormatPicker] = useState(false);
-
-  const loadAll = useCallback(async () => {
-    if (!user) return;
-    setLoadingScenarios(true);
-    try {
-      const data = await loadScenarios(user.uid);
-      setScenarios(data);
-      setLoaded(true);
-    } catch (e) {
-      console.error('Failed to load scenarios', e);
-    }
-    setLoadingScenarios(false);
-  }, [user]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
@@ -667,23 +649,6 @@ export function ReportsPage() {
 
   // ── Render ──
 
-  if (!user) {
-    return (
-      <div className="page-container">
-        <div className="ps-page">
-          <h1 className="ps-page-title">Reports</h1>
-          <div className="ps-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
-              Sign in to generate reports from your saved scenarios.
-            </p>
-            <button className="ps-btn ps-btn--primary" onClick={() => setShowLogin(true)}>Sign In</button>
-          </div>
-          {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="page-container">
       <div className="ps-page">
@@ -696,24 +661,15 @@ export function ReportsPage() {
         <div className="ps-card rp-card">
           <div className="rp-card-header">
             <h2 className="ps-card-title">Select Scenarios</h2>
-            {!loaded && !loadingScenarios && (
-              <button className="ps-btn ps-btn--secondary" onClick={loadAll}>Load Scenarios</button>
-            )}
           </div>
 
-          {loadingScenarios && (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <LoadingCoin text="Loading scenarios…" />
-            </div>
-          )}
-
-          {loaded && scenarios.length === 0 && (
+          {scenarios.length === 0 && (
             <p style={{ color: 'var(--text-muted)', padding: '16px 0' }}>
               No saved scenarios found. Go to the Portfolio Simulator to create and save scenarios.
             </p>
           )}
 
-          {loaded && scenarios.length > 0 && (
+          {scenarios.length > 0 && (
             <>
               <table className="rp-table">
                 <thead>
@@ -783,8 +739,6 @@ export function ReportsPage() {
             </div>
           </div>
         )}
-
-        {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
       </div>
     </div>
   );

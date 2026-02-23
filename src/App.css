@@ -1853,6 +1853,19 @@ body {
   border-color: var(--accent-primary);
 }
 
+/* ── Generate Report CTA ── */
+.ps-generate-report-cta {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-align: center;
+  border-radius: var(--radius-md);
+}
+
 .ps-sync-indicator {
   margin-top: 6px;
   font-size: 12px;

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
 import { formatCurrency } from '../utils/currency';
@@ -487,6 +488,7 @@ function CashFlowForm({ initial, currencySymbol, savedLabels, onSave, onCancel, 
 export function PortfolioSimulatorPage() {
   const { currency } = useCurrency();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // ── Persisted working state ──
   const [simulationEnd, setSimulationEnd] = usePersistedState<string>(
@@ -514,7 +516,6 @@ export function PortfolioSimulatorPage() {
   const [tableOpen, setTableOpen] = useState(false);
   const [showSaveAs, setShowSaveAs] = useState(false);
   const { gate, showLogin: showLoginModal, onLoginSuccess, onLoginClose } = useAuthGate();
-  const [scenarioSyncing, setScenarioSyncing] = useState(false);
   const [saveAsName, setSaveAsName] = useState('');
   const [renamingScenario, setRenamingScenario] = useState(false);
   const [renameValue, setRenameValue] = useState('');
@@ -531,21 +532,29 @@ export function PortfolioSimulatorPage() {
     );
   }, [activeScenario, simulationEnd, cashFlows]);
 
-  // ── Firestore sync ──
-  // Load scenarios from Firestore when user logs in
+  // ── Firestore sync (silent background merge) ──
+  // Merge remote scenarios into local state without blocking UI
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    setScenarioSyncing(true);
     loadScenarios(user.uid)
       .then((remote) => {
-        if (cancelled) return;
-        if (remote.length > 0) {
-          setSavedScenarios(remote);
-        }
+        if (cancelled || remote.length === 0) return;
+        setSavedScenarios((local) => {
+          const localIds = new Set(local.map((s) => s.id));
+          const merged = [...local];
+          for (const r of remote) {
+            if (!localIds.has(r.id)) merged.push(r);
+            else {
+              // overwrite local with remote version
+              const idx = merged.findIndex((s) => s.id === r.id);
+              if (idx !== -1) merged[idx] = r;
+            }
+          }
+          return merged;
+        });
       })
-      .catch((err) => console.error('[scenarios] fetch failed:', err))
-      .finally(() => { if (!cancelled) setScenarioSyncing(false); });
+      .catch((err) => console.error('[scenarios] fetch failed:', err));
     return () => { cancelled = true; };
   }, [user, setSavedScenarios]);
 
@@ -900,8 +909,15 @@ export function PortfolioSimulatorPage() {
                 🔒 Sign in to save scenarios to your account
               </button>
             )}
-            {scenarioSyncing && (
-              <div className="ps-sync-indicator">Syncing…</div>
+
+            {/* Generate Report CTA — shown when scenario is saved */}
+            {activeScenarioId && !isDirty && (
+              <button
+                className="ps-btn ps-btn--gold ps-generate-report-cta"
+                onClick={() => navigate('/reports')}
+              >
+                📊 Generate Report
+              </button>
             )}
           </div>
 

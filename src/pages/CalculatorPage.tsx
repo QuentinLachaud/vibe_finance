@@ -126,10 +126,28 @@ export function CalculatorPage() {
         />
       </div>
 
-      {/* CTA: bridge to portfolio simulator */}
+      {/* CTA: bridge to compound interest calculator */}
       {savings > 0 && (
         <div className="savings-invest-cta">
-          <button className="thp-cta" onClick={() => navigate('/portfolio')}>
+          <button
+            className="thp-cta"
+            onClick={() => {
+              // Pre-fill compound interest page: 0 initial, savings as monthly deposit
+              localStorage.setItem(
+                'vf-compound-interest',
+                JSON.stringify({
+                  initialInvestment: 0,
+                  recurringInvestment: Math.round(savings),
+                  recurringFrequency: 'monthly',
+                  mode: 'deposit',
+                  annualGrowthRate: 6,
+                  annualDepositIncrease: 2,
+                  years: 30,
+                }),
+              );
+              navigate('/compound-interest');
+            }}
+          >
             See how you could invest {formatCurrency(savings, currency.code)}/mo →
           </button>
         </div>
