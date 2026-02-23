@@ -1,7 +1,7 @@
 import type { CashFlow } from '../utils/simulationEngine';
 
 // ── Currency ──
-export type CurrencyCode = 'GBP' | 'USD' | 'EUR';
+export type CurrencyCode = 'GBP' | 'USD' | 'EUR' | 'INR' | 'JPY' | 'CNY';
 
 // ── Scenarios ──
 export interface SavedScenario {

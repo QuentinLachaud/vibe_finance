@@ -22,6 +22,7 @@ interface MonteCarloChartProps {
   data: TimeStep[];
   result: SimulationResult;
   currencyCode: CurrencyCode;
+
 }
 
 // ── Distinct color palette for high contrast ──
@@ -191,17 +192,15 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
   const [hoveredLabel, setHoveredLabel] = useState('');
 
   // Pre-compute stacked band data for correct layering
-  const chartData = useMemo(
-    () =>
-      data.map((d) => ({
-        ...d,
-        p10_base: d.p10,
-        band_10_25: Math.max(0, d.p25 - d.p10),
-        band_25_75: Math.max(0, d.p75 - d.p25),
-        band_75_90: Math.max(0, d.p90 - d.p75),
-      })),
-    [data],
-  );
+  const chartData = useMemo(() => {
+    return data.map((d) => ({
+      ...d,
+      p10_base: d.p10,
+      band_10_25: Math.max(0, d.p25 - d.p10),
+      band_25_75: Math.max(0, d.p75 - d.p25),
+      band_75_90: Math.max(0, d.p90 - d.p75),
+    }));
+  }, [data]);
 
   const handleMouseMove = useCallback((state: any) => {
     if (state?.activeLabel) {
@@ -217,9 +216,18 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
       <div className="ps-flip-face ps-flip-face--front">
         <div className="ps-flip-header">
           <h2 className="ps-card-title">Monte Carlo Simulation</h2>
-          <button className="ps-flip-btn" onClick={() => setFlipped(true)} title="Show outcome distribution">
-            📊 Distribution
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className={`ps-survival-badge ps-survival-badge--chart ${
+              result.survivalRate >= 95 ? 'ps-survival-badge--green' :
+              result.survivalRate >= 80 ? 'ps-survival-badge--yellow' :
+              'ps-survival-badge--red'
+            }`}>
+              {result.survivalRate.toFixed(0)}% survive
+            </span>
+            <button className="ps-flip-btn" onClick={() => setFlipped(true)} title="Show outcome distribution">
+              📊 Distribution
+            </button>
+          </div>
         </div>
         <div className="ps-chart-container">
           <ResponsiveContainer width="100%" height={380}>
@@ -230,12 +238,12 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
             >
               <defs>
                 <linearGradient id="outerBandGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={COLOR_OUTER} stopOpacity={0.4} />
-                  <stop offset="100%" stopColor={COLOR_OUTER} stopOpacity={0.08} />
+                  <stop offset="0%" stopColor={COLOR_OUTER} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={COLOR_OUTER} stopOpacity={0.05} />
                 </linearGradient>
                 <linearGradient id="innerBandGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={COLOR_INNER} stopOpacity={0.5} />
-                  <stop offset="100%" stopColor={COLOR_INNER} stopOpacity={0.12} />
+                  <stop offset="0%" stopColor={COLOR_INNER} stopOpacity={0.45} />
+                  <stop offset="100%" stopColor={COLOR_INNER} stopOpacity={0.08} />
                 </linearGradient>
               </defs>
 
@@ -262,7 +270,7 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
 
               <Tooltip
                 content={<ChartTooltip currencyCode={currencyCode} />}
-                cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
+                cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1 }}
               />
 
               {/* Invisible base up to p10 */}

@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { deleteUser } from 'firebase/auth';
+import { doc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
+import { db } from '../config/firebase';
 import type { CurrencyCode } from '../types';
 import type { ThemeMode } from '../types';
 
@@ -17,16 +21,20 @@ function getSavedSimulationYears(): number {
   } catch {
     // ignore storage issues
   }
-  return 30;
+  return 15;
 }
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { currency, setCurrency } = useCurrency();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [simulationYears, setSimulationYears] = useState<number>(getSavedSimulationYears);
   const [status, setStatus] = useState<string>('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const accountLabel = useMemo(() => {
     if (!user) return 'Not signed in';
@@ -38,6 +46,57 @@ export function SettingsPage() {
     setSimulationYears(normalized);
     localStorage.setItem(SIM_YEARS_KEY, String(normalized));
     setStatus('Simulation defaults saved.');
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      // Delete all Firestore data under users/{uid}
+      if (db) {
+        const subcollections = ['scenarios', 'profile', 'netWorth', 'settings'];
+        for (const sub of subcollections) {
+          try {
+            const colRef = collection(db, 'users', user.uid, sub);
+            const snap = await getDocs(colRef);
+            await Promise.all(snap.docs.map((d) => deleteDoc(doc(db!, 'users', user.uid, sub, d.id))));
+          } catch {
+            // continue even if a sub-collection doesn't exist
+          }
+        }
+        // Delete the user root doc if it exists
+        try { await deleteDoc(doc(db, 'users', user.uid)); } catch { /* ok */ }
+      }
+
+      // Clear all localStorage
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('vf-') || key.startsWith('vibe-finance'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+      } catch { /* ok */ }
+
+      // Delete Firebase Auth account
+      await deleteUser(user);
+
+      // Navigate to home
+      navigate('/', { replace: true });
+    } catch (error: unknown) {
+      const code = (error as { code?: string }).code ?? '';
+      if (code === 'auth/requires-recent-login') {
+        setDeleteError('For security, please sign out, sign back in, then try again.');
+      } else {
+        setDeleteError('Failed to delete account. Please try again.');
+      }
+      console.error('[settings] delete account failed:', error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const exportPreferences = () => {
@@ -66,7 +125,7 @@ export function SettingsPage() {
 
     const defaultTheme: ThemeMode = 'dark';
     const defaultCurrency: CurrencyCode = 'GBP';
-    const defaultSimulationYears = 30;
+    const defaultSimulationYears = 15;
 
     setTheme(defaultTheme);
     setCurrency(defaultCurrency);
@@ -87,9 +146,17 @@ export function SettingsPage() {
           <h2 className="settings-card-title">Account</h2>
           <p className="settings-text">{accountLabel}</p>
           {user && (
-            <button className="settings-btn settings-btn--secondary" onClick={logout}>
-              Sign out
-            </button>
+            <div className="settings-actions">
+              <button className="settings-btn settings-btn--secondary" onClick={logout}>
+                Sign out
+              </button>
+              <button
+                className="settings-btn settings-btn--danger"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Delete account
+              </button>
+            </div>
           )}
         </section>
 
@@ -124,6 +191,9 @@ export function SettingsPage() {
               <option value="GBP">£ GBP</option>
               <option value="USD">$ USD</option>
               <option value="EUR">€ EUR</option>
+              <option value="INR">₹ INR</option>
+              <option value="JPY">¥ JPY</option>
+              <option value="CNY">¥ CNY</option>
             </select>
           </div>
         </section>
@@ -141,7 +211,7 @@ export function SettingsPage() {
                 max={60}
                 step={1}
                 value={simulationYears}
-                onChange={(e) => setSimulationYears(Number(e.target.value || 30))}
+                onChange={(e) => setSimulationYears(Number(e.target.value || 15))}
               />
               <span className="settings-suffix">years</span>
               <button className="settings-btn settings-btn--primary" onClick={saveSimulationYears}>
@@ -150,6 +220,14 @@ export function SettingsPage() {
             </div>
           </div>
           <p className="settings-note">Used as the default end date in Portfolio Simulator.</p>
+        </section>
+
+        <section className="settings-card">
+          <h2 className="settings-card-title">Advanced Simulation</h2>
+          <div className="settings-field">
+            <label className="settings-label">Simulation Paths</label>
+            <p className="settings-note">Simulation paths are fixed at 500 for performance.</p>
+          </div>
         </section>
 
         <section className="settings-card">
@@ -165,6 +243,40 @@ export function SettingsPage() {
           {status && <p className="settings-status">{status}</p>}
         </section>
       </div>
+
+      {/* Delete account confirmation overlay */}
+      {showDeleteConfirm && (
+        <div className="report-overlay" onClick={() => !isDeleting && setShowDeleteConfirm(false)}>
+          <div className="report-popup" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <h2 style={{ color: 'var(--color-danger, #ef4444)', marginBottom: 8 }}>Delete Account</h2>
+            <p style={{ marginBottom: 16, lineHeight: 1.6 }}>
+              This action is <strong>permanent and irreversible</strong>. All your saved scenarios,
+              net worth data, and preferences will be deleted forever.
+            </p>
+            {deleteError && (
+              <p style={{ color: 'var(--color-danger, #ef4444)', marginBottom: 12, fontSize: 14 }}>
+                {deleteError}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                className="settings-btn settings-btn--secondary"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="settings-btn settings-btn--danger"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting…' : 'Delete my account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

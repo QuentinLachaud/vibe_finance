@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, useTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
@@ -42,7 +42,7 @@ function getDefaultSimulationYears(): number {
   } catch {
     // ignore storage errors
   }
-  return 35;
+  return 15;
 }
 
 // SavedScenario is imported from ../types
@@ -505,8 +505,6 @@ export function PortfolioSimulatorPage() {
 
   // ── UI state (not persisted) ──
   const [cashFlowFilter, setCashFlowFilter] = useState<'all' | 'deposits' | 'withdrawals'>('all');
-  const [volatility] = useState(12);
-  const numPaths = 500;
   const [showForm, setShowForm] = useState(false);
   const [editingCashFlow, setEditingCashFlow] = useState<CashFlow | null>(null);
   const [isCashFlowFormDirty, setIsCashFlowFormDirty] = useState(false);
@@ -523,6 +521,14 @@ export function PortfolioSimulatorPage() {
   const [renameValue, setRenameValue] = useState('');
   const [savedLabels, setSavedLabels] = usePersistedState<string[]>('vf-ps-labels', []);
   const [deleteScenarioId, setDeleteScenarioId] = useState<string | null>(null);
+
+  // ── Advanced settings (persisted) ──
+  const DEFAULT_VOLATILITY = 15; // S&P 500 long-run annualised volatility ~15%
+  const [volatility, setVolatility] = usePersistedState<number>('vf-ps-volatility', DEFAULT_VOLATILITY);
+  const numPaths = 500;
+
+  const [showVolatilityWarning, setShowVolatilityWarning] = useState(false);
+  const [pendingVolatility, setPendingVolatility] = useState<number | null>(null);
 
   // ── Derived ──
   const activeScenario = savedScenarios.find((s) => s.id === activeScenarioId) ?? null;
@@ -562,15 +568,27 @@ export function PortfolioSimulatorPage() {
   }, [user, setSavedScenarios]);
 
   // ── Simulation ──
-  const result: SimulationResult | null = useMemo(() => {
-    if (cashFlows.length === 0) return null;
-    return runSimulation({
+  const [result, setResult] = useState<SimulationResult | null>(null);
+  const prevInputsRef = useRef<string>('');
+
+  useEffect(() => {
+    if (cashFlows.length === 0) {
+      setResult(null);
+      prevInputsRef.current = '';
+      return;
+    }
+    const inputKey = JSON.stringify({ cashFlows, volatility, numPaths, simulationEnd });
+    if (inputKey === prevInputsRef.current) return;
+    prevInputsRef.current = inputKey;
+
+    const res = runSimulation({
       startingBalance: 0,
       cashFlows,
       volatility,
       numPaths,
       endOverride: simulationEnd,
     });
+    setResult(res);
   }, [cashFlows, volatility, numPaths, simulationEnd]);
 
   // ── Scenario handlers ──
@@ -1040,7 +1058,7 @@ export function PortfolioSimulatorPage() {
         </div>
 
         {/* ════════ RIGHT COLUMN ════════ */}
-        <div className="ps-right">
+        <div className="ps-right" style={{ position: 'relative' }}>
           {/* Results Summary */}
           {result && (
             <div className="ps-card ps-results-card">
@@ -1064,6 +1082,16 @@ export function PortfolioSimulatorPage() {
                     {formatCurrency(result.finalP25, currency.code)}
                   </span>
                 </div>
+                <div className="ps-result-item ps-result-item--full">
+                  <span className="ps-result-label">Survival Rate</span>
+                  <span className={`ps-survival-badge ${
+                    result.survivalRate >= 95 ? 'ps-survival-badge--green' :
+                    result.survivalRate >= 80 ? 'ps-survival-badge--yellow' :
+                    'ps-survival-badge--red'
+                  }`}>
+                    {result.survivalRate.toFixed(1)}%
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -1075,6 +1103,7 @@ export function PortfolioSimulatorPage() {
                 data={result.timeSteps}
                 result={result}
                 currencyCode={currency.code}
+
               />
             </div>
           )}
@@ -1179,6 +1208,28 @@ export function PortfolioSimulatorPage() {
             setDeleteScenarioId(null);
           }}
         />
+      )}
+
+      {/* Volatility Warning */}
+      {showVolatilityWarning && (
+        <div className="confirm-overlay" onClick={() => { setShowVolatilityWarning(false); setPendingVolatility(null); }}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p className="confirm-message" style={{ fontWeight: 600, fontSize: 15 }}>⚠️ Adjust Volatility?</p>
+            <p className="confirm-detail" style={{ fontSize: 13, opacity: 0.8, marginTop: 6, lineHeight: 1.5 }}>
+              Changing volatility from the default ({DEFAULT_VOLATILITY}%) will significantly affect simulation
+              results. Only change this if you understand how standard deviation of returns impacts
+              Monte Carlo projections.
+            </p>
+            <div className="confirm-actions">
+              <button className="confirm-btn confirm-btn--cancel" onClick={() => { setShowVolatilityWarning(false); setPendingVolatility(null); }}>
+                Cancel
+              </button>
+              <button className="confirm-btn confirm-btn--save" onClick={() => { if (pendingVolatility !== null) setVolatility(pendingVolatility); setShowVolatilityWarning(false); setPendingVolatility(null); }}>
+                I Understand
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Login Modal */}

@@ -23,10 +23,10 @@ interface ScenarioReport {
 
 type ReportFormat = 'html' | 'csv' | 'pdf';
 
-// ── Constants ──
+// ── Constants (defaults — overridden by persisted user settings) ──
 
-const NUM_PATHS = 500;
-const VOLATILITY = 12;
+const DEFAULT_NUM_PATHS = 500;
+const DEFAULT_VOLATILITY = 15;
 
 const COLOR_VIOLET = '#8b5cf6';
 const COLOR_EMERALD = '#10b981';
@@ -91,7 +91,7 @@ function pctile(sorted: number[], p: number): number {
 
 // ── Qualitative narrative helpers ──
 
-function portfolioNarrative(sc: SavedScenario, result: SimulationResult, fmt: (n: number) => string): string {
+function portfolioNarrative(sc: SavedScenario, result: SimulationResult, fmt: (n: number) => string, simVolatility: number, simPaths: number): string {
   const deposits = sc.cashFlows.filter(cf => cf.type === 'recurring-deposit' && cf.enabled);
   const withdrawals = sc.cashFlows.filter(cf => cf.type === 'recurring-withdrawal' && cf.enabled);
   const oneOffs = sc.cashFlows.filter(cf => cf.type === 'one-off' && cf.enabled);
@@ -133,10 +133,10 @@ function portfolioNarrative(sc: SavedScenario, result: SimulationResult, fmt: (n
 
   // Growth
   const avgGrowth = sc.cashFlows.filter(cf => cf.enabled).reduce((s, cf) => s + cf.growthRate, 0) / Math.max(1, sc.cashFlows.filter(cf => cf.enabled).length);
-  text += `<p class="narrative-section"><strong>Growth Assumption</strong> — Cash flows assume a weighted-average annual growth rate of approximately <strong>${avgGrowth.toFixed(1)}%</strong>, with annual volatility of <strong>${VOLATILITY}%</strong>.</p>`;
+  text += `<p class="narrative-section"><strong>Growth Assumption</strong> — Cash flows assume a weighted-average annual growth rate of approximately <strong>${avgGrowth.toFixed(1)}%</strong>, with annual volatility of <strong>${simVolatility}%</strong>.</p>`;
 
   // Simulation
-  text += `<p class="narrative-section"><strong>Simulation</strong> — ${NUM_PATHS.toLocaleString()} independent Monte Carlo paths were modelled. `;
+  text += `<p class="narrative-section"><strong>Simulation</strong> — ${simPaths.toLocaleString()} independent Monte Carlo paths were modelled. `;
   if (survived === 100) {
     text += 'All simulated paths survived with a positive balance at the end of the horizon.';
   } else if (failed <= 5) {
@@ -277,14 +277,14 @@ function buildHistogramSVG(result: SimulationResult, _fmt: (n: number) => string
 
 // ── Report generators ──
 
-function generateCSV(reports: ScenarioReport[], _code: CurrencyCode): string {
+function generateCSV(reports: ScenarioReport[], _code: CurrencyCode, simPaths: number): string {
   const lines: string[] = [];
 
   for (const { scenario, result } of reports) {
     lines.push(`Scenario: ${scenario.name}`);
     lines.push(`Starting Balance,${scenario.startingBalance}`);
     lines.push(`Simulation End,${scenario.simulationEnd}`);
-    lines.push(`Simulations,${NUM_PATHS}`);
+    lines.push(`Simulations,${simPaths}`);
     lines.push(`Survival Rate,${result.survivalRate}%`);
     lines.push('');
 
@@ -316,14 +316,14 @@ function generateCSV(reports: ScenarioReport[], _code: CurrencyCode): string {
   return lines.join('\n');
 }
 
-function generateHTML(reports: ScenarioReport[], code: CurrencyCode): string {
+function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatility: number, simPaths: number): string {
   const fmt = (v: number) => formatCurrency(v, code);
   const now = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 
   let scenarioBlocks = '';
 
   for (const { scenario, result } of reports) {
-    const narrative = portfolioNarrative(scenario, result, fmt);
+    const narrative = portfolioNarrative(scenario, result, fmt, simVolatility, simPaths);
 
     // Cash flows table
     const cfRows = scenario.cashFlows.filter(cf => cf.enabled).map(cf => `
@@ -387,7 +387,7 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode): string {
             </div>
             <div class="kpi-sm">
               <span class="kpi-sm-label">Simulations</span>
-              <span class="kpi-sm-value">${NUM_PATHS.toLocaleString()}</span>
+              <span class="kpi-sm-value">${simPaths.toLocaleString()}</span>
             </div>
             <div class="kpi-sm">
               <span class="kpi-sm-label">Survived</span>
@@ -410,7 +410,7 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode): string {
         <!-- Page 3: Distribution Chart -->
         <div class="page-section page-break">
           <div class="section-badge">Outcome Distribution</div>
-          <p class="section-explainer">This histogram shows how final portfolio values are distributed across all ${NUM_PATHS} simulations. Each bar represents a range of outcomes — taller bars mean more simulations landed in that range. The dashed lines mark key percentiles.</p>
+          <p class="section-explainer">This histogram shows how final portfolio values are distributed across all ${simPaths} simulations. Each bar represents a range of outcomes — taller bars mean more simulations landed in that range. The dashed lines mark key percentiles.</p>
           ${histSVG}
         </div>
 
@@ -575,7 +575,7 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode): string {
     ${scenarioBlocks}
   </div>
   <div class="report-footer">
-    Vibe Finance &middot; Monte Carlo Portfolio Simulator &middot; ${reports.length} scenario${reports.length !== 1 ? 's' : ''} &middot; ${NUM_PATHS.toLocaleString()} simulations each
+    Vibe Finance &middot; Monte Carlo Portfolio Simulator &middot; ${reports.length} scenario${reports.length !== 1 ? 's' : ''} &middot; ${simPaths.toLocaleString()} simulations each
   </div>
 </body>
 </html>`;
@@ -590,6 +590,10 @@ export function ReportsPage() {
   const [liveScenarios] = usePersistedState<SavedScenario[]>('vf-ps-scenarios', []);
   // Persisted report scenarios — survives scenario deletion from Portfolio Simulator
   const [reportScenarios, setReportScenarios] = usePersistedState<SavedScenario[]>('vf-report-scenarios', []);
+
+  // Use same persisted settings as the Portfolio Simulator page
+  const [volatility] = usePersistedState<number>('vf-ps-volatility', DEFAULT_VOLATILITY);
+  const [numPaths] = usePersistedState<number>('vf-ps-num-paths', DEFAULT_NUM_PATHS);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
@@ -655,8 +659,8 @@ export function ReportsPage() {
             result: runSimulation({
               startingBalance: sc.startingBalance,
               cashFlows: sc.cashFlows,
-              volatility: VOLATILITY,
-              numPaths: NUM_PATHS,
+              volatility,
+              numPaths,
               endOverride: sc.simulationEnd || undefined,
             }),
           }));
@@ -664,11 +668,11 @@ export function ReportsPage() {
           const timestamp = new Date().toISOString().slice(0, 10);
 
           if (format === 'csv') {
-            downloadBlob(new Blob([generateCSV(reports, currency.code)], { type: 'text/csv' }), `vibe-finance-report-${timestamp}.csv`);
+            downloadBlob(new Blob([generateCSV(reports, currency.code, numPaths)], { type: 'text/csv' }), `vibe-finance-report-${timestamp}.csv`);
           } else if (format === 'html') {
-            downloadBlob(new Blob([generateHTML(reports, currency.code)], { type: 'text/html' }), `vibe-finance-report-${timestamp}.html`);
+            downloadBlob(new Blob([generateHTML(reports, currency.code, volatility, numPaths)], { type: 'text/html' }), `vibe-finance-report-${timestamp}.html`);
           } else if (format === 'pdf') {
-            const html = generateHTML(reports, currency.code);
+            const html = generateHTML(reports, currency.code, volatility, numPaths);
             const win = window.open('', '_blank');
             if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500); }
           }
@@ -678,7 +682,7 @@ export function ReportsPage() {
         setGenerating(false);
       }, 100);
     },
-    [selectedScenarios, currency.code],
+    [selectedScenarios, currency.code, volatility, numPaths],
   );
 
   // ── Render ──
@@ -688,8 +692,12 @@ export function ReportsPage() {
       <div className="ps-page">
         <h1 className="ps-page-title">Reports</h1>
 
-        {/* Loading coin overlay */}
-        {generating && <LoadingCoin text="Generating report…" />}
+        {/* Loading overlay */}
+        {generating && (
+          <div className="report-overlay">
+            <LoadingCoin text="Generating report…" />
+          </div>
+        )}
 
         {/* Scenario selection */}
         <div className="ps-card rp-card">
@@ -761,7 +769,7 @@ export function ReportsPage() {
 
         {/* Format picker */}
         {showFormatPicker && (
-          <div className="ps-modal-backdrop" onClick={() => setShowFormatPicker(false)}>
+          <div className="report-overlay" onClick={() => setShowFormatPicker(false)}>
             <div className="rp-format-picker" onClick={(e) => e.stopPropagation()}>
               <h3 className="rp-format-title">Choose Report Format</h3>
               <div className="rp-format-options">

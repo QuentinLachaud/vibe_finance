@@ -1168,6 +1168,21 @@ body {
   filter: brightness(1.05);
 }
 
+.settings-btn--danger {
+  background: var(--color-danger, #ef4444);
+  border-color: var(--color-danger, #ef4444);
+  color: #fff;
+}
+
+.settings-btn--danger:hover {
+  filter: brightness(1.1);
+}
+
+.settings-btn--danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .settings-note,
 .settings-status {
   font-size: 13px;
@@ -2285,7 +2300,8 @@ body {
 
 /* ── Toggle ── */
 .ps-toggle {
-  display: flex;
+  display: inline-flex;
+  width: fit-content;
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -3386,6 +3402,19 @@ body {
 .rp-selected-count {
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* Report overlay with backdrop blur */
+.report-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 /* Format picker modal */
@@ -5773,5 +5802,186 @@ a.header-logo {
   .landing-features-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ═══════════════════════════════════════════
+   Portfolio Simulator — Advanced Settings
+   ═══════════════════════════════════════════ */
+
+/* Advanced Settings Toggle Button */
+.ps-advanced-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 0;
+  margin-top: 4px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.ps-advanced-toggle:hover {
+  color: var(--text-primary);
+}
+
+/* Advanced Settings Panel */
+.ps-advanced-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+/* Label hint */
+.ps-label-hint {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+/* Simulation count option pills */
+.ps-sim-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ps-sim-option {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ps-sim-option:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.ps-sim-option--active {
+  background: var(--accent-gold);
+  color: #0b1120;
+  border-color: var(--accent-gold);
+}
+
+/* Row layout for toggle fields */
+.ps-field--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Toggle switch (iOS-style) */
+.ps-toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border: none;
+  border-radius: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.ps-toggle-switch--on {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+}
+
+.ps-toggle-switch-track {
+  display: none;
+}
+
+.ps-toggle-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.ps-toggle-switch--on .ps-toggle-switch-thumb {
+  transform: translateX(20px);
+}
+
+/* ═══════════════════════════════════════════
+   Portfolio Simulator — Survival Rate Badge
+   ═══════════════════════════════════════════ */
+.ps-survival-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ps-survival-badge--chart {
+  font-size: 12px;
+  padding: 4px 10px;
+  font-weight: 600;
+}
+
+.ps-survival-badge--green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ps-survival-badge--yellow {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.ps-survival-badge--red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Survival rate result item: full width */
+.ps-result-item--full {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* ═══════════════════════════════════════════
+   Confirm dialog — detail text
+   ═══════════════════════════════════════════ */
+.confirm-detail {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 6px;
 }
 

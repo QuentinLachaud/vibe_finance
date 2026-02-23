@@ -57,6 +57,7 @@ export interface SimulationResult {
   finalDistribution: number[];
   /** % of paths that ended with value > 0. */
   survivalRate: number;
+
 }
 
 // ── Helpers ──
@@ -152,7 +153,8 @@ function getSimulationRange(cashFlows: CashFlow[], endOverride?: string): {
 
 /**
  * For a given month (absolute), compute net cash flow from all cash flows.
- * Returns the sum of deposits/withdrawals applying that month.
+ * Recurring amounts are compounded by their growthRate from the start date.
+ * e.g. £50,000/year withdrawal with 3% annual increase → grows each year.
  */
 function monthlyCashFlowAt(absMonth: number, cashFlows: CashFlow[]): number {
   let flow = 0;
@@ -174,19 +176,26 @@ function monthlyCashFlowAt(absMonth: number, cashFlows: CashFlow[]): number {
 
     if (absMonth < sStartAbs || absMonth > sEndAbs) continue;
 
+    // Lump sum at start date
     if (absMonth === sStartAbs && s.startingValue && s.startingValue > 0) {
       flow += s.type === 'recurring-withdrawal' ? -s.startingValue : s.startingValue;
     }
 
+    // Compound the periodic amount by growthRate (annual increase).
+    // Years elapsed since start determines the compounded amount.
+    const monthsElapsed = absMonth - sStartAbs;
+    const yearsElapsed = monthsElapsed / 12;
+    const annualGrowth = (s.growthRate ?? 0) / 100;
+    const compoundedAmount = s.amount * Math.pow(1 + annualGrowth, yearsElapsed);
+
     if (s.frequency === 'monthly') {
-      // Apply every month in range
-      flow += s.type === 'recurring-withdrawal' ? -s.amount : s.amount;
+      flow += s.type === 'recurring-withdrawal' ? -compoundedAmount : compoundedAmount;
     } else {
       // Annually: apply on the anniversary month
       const monthInYear = absMonth % 12;
       const startMonthInYear = sStartAbs % 12;
       if (monthInYear === startMonthInYear) {
-        flow += s.type === 'recurring-withdrawal' ? -s.amount : s.amount;
+        flow += s.type === 'recurring-withdrawal' ? -compoundedAmount : compoundedAmount;
       }
     }
   }
