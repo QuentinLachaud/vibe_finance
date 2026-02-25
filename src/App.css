@@ -3497,6 +3497,220 @@ body {
   color: var(--text-primary);
 }
 
+/* ── Reports Page: Sections & Cards ── */
+
+.rp-page-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: -8px 0 24px;
+}
+
+.rp-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.rp-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.rp-section-icon {
+  font-size: 20px;
+}
+
+.rp-section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.rp-section-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.05);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+}
+
+.rp-empty-text {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 0 4px;
+}
+
+.rp-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rp-report-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.rp-report-card:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.rp-report-card--selected {
+  border-color: var(--accent-primary);
+  background: rgba(139,92,246,0.06);
+}
+
+.rp-report-check {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.rp-report-check input[type="checkbox"] {
+  accent-color: var(--accent-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.rp-report-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rp-report-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rp-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rp-report-date {
+  color: var(--text-secondary);
+}
+
+.rp-report-summary {
+  color: var(--text-muted);
+}
+
+.rp-report-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rp-report-dl-btn,
+.rp-report-del-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.rp-report-dl-btn:hover {
+  background: rgba(34,211,238,0.1);
+  color: #22d3ee;
+  border-color: rgba(34,211,238,0.3);
+}
+
+.rp-report-del-btn:hover {
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
+  border-color: rgba(239,68,68,0.3);
+}
+
+.rp-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* ── Calculator: Export Section ── */
+
+.sc-export-section {
+  margin-top: 20px;
+  padding: 20px 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+}
+
+.sc-export-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sc-report-name-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.sc-report-name-input::placeholder {
+  color: var(--text-muted);
+}
+
+.sc-report-name-input:focus {
+  border-color: var(--accent-primary);
+}
+
+@media (max-width: 640px) {
+  .sc-export-row {
+    flex-direction: column;
+  }
+  .sc-report-name-input {
+    width: 100%;
+  }
+  .rp-report-card {
+    flex-wrap: wrap;
+  }
+  .rp-report-info {
+    min-width: 150px;
+  }
+}
+
 /* ── Loading Coin Wrapper (Suspense fallback) ── */
 .loading-coin-wrapper {
   display: flex;

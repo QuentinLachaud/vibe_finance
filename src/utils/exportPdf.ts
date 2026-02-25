@@ -24,7 +24,8 @@ export function exportTakeHomePdf(
   result: TaxBreakdownForPdf,
   region: string,
   currencySymbol: string,
-): void {
+  skipDownload = false,
+): string {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pw = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -230,7 +231,8 @@ export function exportTakeHomePdf(
     { align: 'center' },
   );
 
-  doc.save('take-home-pay-report.pdf');
+  if (!skipDownload) doc.save('take-home-pay-report.pdf');
+  return doc.output('datauristring');
 }
 
 // ══════════════════════════════════════════════
@@ -245,7 +247,8 @@ export function exportHouseholdTakeHomePdf(
   region1: string,
   region2: string,
   currencySymbol: string,
-): void {
+  skipDownload = false,
+): string {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pw = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -538,5 +541,198 @@ export function exportHouseholdTakeHomePdf(
     { align: 'center' },
   );
 
-  doc.save('household-take-home-pay-report.pdf');
+  if (!skipDownload) doc.save('household-take-home-pay-report.pdf');
+  return doc.output('datauristring');
+}
+
+// ══════════════════════════════════════════════
+//  Savings Calculator PDF
+// ══════════════════════════════════════════════
+
+interface SavingsCalcForPdf {
+  name: string;
+  income: number;
+  incomeFrequency: string;
+  monthlyIncome: number;
+  expenses: { name: string; amount: number; icon?: string }[];
+  totalExpenses: number;
+  monthlySavings: number;
+  annualSavings: number;
+  savingsRate: number;
+}
+
+export function exportSavingsCalcPdf(
+  data: SavingsCalcForPdf,
+  currencySymbol: string,
+  skipDownload = false,
+): string {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pw = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const contentW = pw - margin * 2;
+  let y = 20;
+
+  // ── Brand header ──
+  doc.setFillColor(11, 17, 32);
+  doc.rect(0, 0, pw, 40, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(241, 245, 249);
+  doc.text('TakeHomeCalc.co.uk', margin, 18);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Savings Calculator Report  —  ${data.name}`, margin, 28);
+
+  const now = new Date();
+  doc.text(
+    `Generated ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+    margin,
+    34,
+  );
+
+  y = 50;
+
+  // ── Hero: Monthly Savings ──
+  doc.setFillColor(26, 35, 50);
+  doc.roundedRect(margin, y, contentW, 30, 3, 3, 'F');
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(148, 163, 184);
+  doc.text('MONTHLY SAVINGS', margin + 10, y + 10);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(24);
+  doc.setTextColor(data.monthlySavings >= 0 ? 34 : 239, data.monthlySavings >= 0 ? 211 : 68, data.monthlySavings >= 0 ? 238 : 68);
+  doc.text(fmt(data.monthlySavings, currencySymbol), margin + 10, y + 24);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    `${fmt(data.annualSavings, currencySymbol)}/year  ·  ${data.savingsRate}% savings rate`,
+    pw - margin - 10,
+    y + 24,
+    { align: 'right' },
+  );
+
+  y += 38;
+
+  // ── KPI Row ──
+  const kpis = [
+    { label: 'Monthly Income', value: fmt(data.monthlyIncome, currencySymbol), color: [34, 211, 238] },
+    { label: 'Total Expenses', value: fmt(data.totalExpenses, currencySymbol), color: [239, 68, 68] },
+    { label: 'Savings Rate', value: `${data.savingsRate}%`, color: [16, 185, 129] },
+  ];
+
+  const kpiW = (contentW - 12) / 3;
+  kpis.forEach((kpi, i) => {
+    const kx = margin + i * (kpiW + 6);
+    doc.setFillColor(26, 35, 50);
+    doc.roundedRect(kx, y, kpiW, 22, 2, 2, 'F');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(kpi.label, kx + kpiW / 2, y + 8, { align: 'center' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
+    doc.text(kpi.value, kx + kpiW / 2, y + 18, { align: 'center' });
+  });
+
+  y += 30;
+
+  // ── Expense Breakdown ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(241, 245, 249);
+  doc.text('Expense Breakdown', margin, y);
+  y += 6;
+
+  // Header
+  doc.setFillColor(15, 23, 41);
+  doc.rect(margin, y, contentW, 7, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Category', margin + 4, y + 5);
+  doc.text('Monthly', pw - margin - 4, y + 5, { align: 'right' });
+  y += 7;
+
+  // Rows
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  data.expenses.forEach((exp, i) => {
+    if (i % 2 === 0) {
+      doc.setFillColor(22, 32, 50);
+      doc.rect(margin, y, contentW, 7, 'F');
+    }
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${exp.icon || '•'} ${exp.name}`, margin + 4, y + 5);
+    doc.text(fmt(exp.amount, currencySymbol), pw - margin - 4, y + 5, { align: 'right' });
+    y += 7;
+  });
+
+  // Total
+  doc.setDrawColor(30, 41, 59);
+  doc.line(margin, y, pw - margin, y);
+  y += 1;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(241, 245, 249);
+  doc.text('Total Expenses', margin + 4, y + 5);
+  doc.text(fmt(data.totalExpenses, currencySymbol), pw - margin - 4, y + 5, { align: 'right' });
+  y += 12;
+
+  // ── Summary ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(241, 245, 249);
+  doc.text('Summary', margin, y);
+  y += 6;
+
+  const summaryRows: [string, string, number[]][] = [
+    [`Income (${data.incomeFrequency})`, fmt(data.income, currencySymbol), [148, 163, 184]],
+    ['Monthly Income', fmt(data.monthlyIncome, currencySymbol), [34, 211, 238]],
+    ['Total Expenses', `−${fmt(data.totalExpenses, currencySymbol)}`, [239, 68, 68]],
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  summaryRows.forEach(([label, value, color]) => {
+    doc.setTextColor(148, 163, 184);
+    doc.text(label, margin + 4, y + 5);
+    doc.setTextColor(color[0], color[1], color[2]);
+    doc.text(value, pw - margin - 4, y + 5, { align: 'right' });
+    y += 8;
+  });
+
+  // Net savings total
+  doc.setDrawColor(30, 41, 59);
+  doc.line(margin, y, pw - margin, y);
+  y += 2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(data.monthlySavings >= 0 ? 34 : 239, data.monthlySavings >= 0 ? 211 : 68, data.monthlySavings >= 0 ? 238 : 68);
+  doc.text('Monthly Savings', margin + 4, y + 6);
+  doc.text(fmt(data.monthlySavings, currencySymbol), pw - margin - 4, y + 6, { align: 'right' });
+
+  // ── Footer ──
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text(
+    'Generated by TakeHomeCalc.co.uk  •  Not financial advice',
+    pw / 2,
+    285,
+    { align: 'center' },
+  );
+
+  if (!skipDownload) doc.save(`savings-report-${data.name.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  return doc.output('datauristring');
 }

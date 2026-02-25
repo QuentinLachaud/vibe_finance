@@ -11,8 +11,9 @@ import {
 import { LoadingCoin } from '../components/LoadingCoin';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { TrashIcon } from '../components/Icons';
-import type { SavedScenario, CurrencyCode } from '../types';
+import type { SavedScenario, CurrencyCode, ReportCategory } from '../types';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useSavedReports } from '../hooks/useSavedReports';
 
 // ── Types ──
 
@@ -581,36 +582,75 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
 </html>`;
 }
 
+// ── Helpers: date formatting ──
+
+function formatReportDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
+    ' · ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+const CATEGORY_META: Record<ReportCategory, { label: string; icon: string; emptyText: string }> = {
+  'take-home-pay': {
+    label: 'Take Home Pay',
+    icon: '💰',
+    emptyText: 'No take-home pay reports yet. Generate one from the Take Home Pay page.',
+  },
+  'savings-calculator': {
+    label: 'Savings Calculator',
+    icon: '🧮',
+    emptyText: 'No savings reports yet. Export one from the Savings Calculator.',
+  },
+  'portfolio-simulation': {
+    label: 'Portfolio Simulation',
+    icon: '📈',
+    emptyText: 'No portfolio reports yet. Select scenarios below to generate.',
+  },
+};
+
+// ── Download helpers ──
+
+function downloadDataUrl(dataUrl: string, filename: string) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 // ── Component ──
 
 export function ReportsPage() {
   const { currency } = useCurrency();
 
+  // Saved PDF reports (Take Home Pay + Savings Calculator)
+  const { reports: savedReports, removeReport, removeReports } = useSavedReports();
+
   // Live scenarios from Portfolio Simulator
   const [liveScenarios] = usePersistedState<SavedScenario[]>('vf-ps-scenarios', []);
-  // Persisted report scenarios — survives scenario deletion from Portfolio Simulator
   const [reportScenarios, setReportScenarios] = usePersistedState<SavedScenario[]>('vf-report-scenarios', []);
 
-  // Use same persisted settings as the Portfolio Simulator page
   const [volatility] = usePersistedState<number>('vf-ps-volatility', DEFAULT_VOLATILITY);
   const [numPaths] = usePersistedState<number>('vf-ps-num-paths', DEFAULT_NUM_PATHS);
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [psSelected, setPsSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [showFormatPicker, setShowFormatPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'saved'; ids: Set<string> } | { type: 'ps'; ids: Set<string> } | null>(null);
 
-  // Sync: add new scenarios from Portfolio Simulator, update existing ones, keep deleted-from-PS snapshots
+  // Selection for saved reports
+  const [savedSelected, setSavedSelected] = useState<Set<string>>(new Set());
+
+  // Sync portfolio scenarios
   useEffect(() => {
     setReportScenarios((prev) => {
       const prevById = new Map(prev.map((s) => [s.id, s]));
       let changed = false;
       for (const ls of liveScenarios) {
         const existing = prevById.get(ls.id);
-        if (!existing) {
-          prevById.set(ls.id, ls);
-          changed = true;
-        } else if (JSON.stringify(existing) !== JSON.stringify(ls)) {
+        if (!existing || JSON.stringify(existing) !== JSON.stringify(ls)) {
           prevById.set(ls.id, ls);
           changed = true;
         }
@@ -619,31 +659,37 @@ export function ReportsPage() {
     });
   }, [liveScenarios, setReportScenarios]);
 
-  // Use reportScenarios as the source of truth
   const scenarios = reportScenarios;
 
-  const toggleSelect = useCallback((id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  // Portfolio simulator selection helpers
+  const togglePsSelect = useCallback((id: string) => {
+    setPsSelected((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }, []);
 
-  const toggleAll = useCallback(() => {
-    if (selected.size === scenarios.length) setSelected(new Set());
-    else setSelected(new Set(scenarios.map((s) => s.id)));
-  }, [selected.size, scenarios]);
+  const togglePsAll = useCallback(() => {
+    if (psSelected.size === scenarios.length) setPsSelected(new Set());
+    else setPsSelected(new Set(scenarios.map((s) => s.id)));
+  }, [psSelected.size, scenarios]);
 
-  const handleDeleteSelected = useCallback(() => {
-    setReportScenarios((prev) => prev.filter((s) => !selected.has(s.id)));
-    setSelected(new Set());
+  const handlePsDelete = useCallback(() => {
+    if (!deleteTarget || deleteTarget.type !== 'ps') return;
+    setReportScenarios((prev) => prev.filter((s) => !deleteTarget.ids.has(s.id)));
+    setPsSelected(new Set());
+    setDeleteTarget(null);
     setShowDeleteConfirm(false);
-  }, [selected, setReportScenarios]);
+  }, [deleteTarget, setReportScenarios]);
+
+  const handleSavedDelete = useCallback(() => {
+    if (!deleteTarget || deleteTarget.type !== 'saved') return;
+    removeReports(deleteTarget.ids);
+    setSavedSelected(new Set());
+    setDeleteTarget(null);
+    setShowDeleteConfirm(false);
+  }, [deleteTarget, removeReports]);
 
   const selectedScenarios = useMemo(
-    () => scenarios.filter((s) => selected.has(s.id)),
-    [scenarios, selected],
+    () => scenarios.filter((s) => psSelected.has(s.id)),
+    [scenarios, psSelected],
   );
 
   const runReportsForSelected = useCallback(
@@ -685,40 +731,120 @@ export function ReportsPage() {
     [selectedScenarios, currency.code, volatility, numPaths],
   );
 
+  // Group saved reports by category
+  const thpReports = useMemo(() => savedReports.filter((r) => r.category === 'take-home-pay'), [savedReports]);
+  const scReports = useMemo(() => savedReports.filter((r) => r.category === 'savings-calculator'), [savedReports]);
+
+  // Toggle saved report selection
+  const toggleSavedSelect = useCallback((id: string) => {
+    setSavedSelected((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }, []);
+
   // ── Render ──
+
+  const renderSavedSection = (category: ReportCategory, reports: typeof savedReports) => {
+    const meta = CATEGORY_META[category];
+    const sectionSelected = reports.filter((r) => savedSelected.has(r.id));
+
+    return (
+      <div className="rp-section" key={category}>
+        <div className="rp-section-header">
+          <span className="rp-section-icon">{meta.icon}</span>
+          <h2 className="rp-section-title">{meta.label}</h2>
+          <span className="rp-section-count">{reports.length} report{reports.length !== 1 ? 's' : ''}</span>
+        </div>
+
+        {reports.length === 0 ? (
+          <p className="rp-empty-text">{meta.emptyText}</p>
+        ) : (
+          <div className="rp-report-list">
+            {reports.map((r) => (
+              <div key={r.id} className={`rp-report-card${savedSelected.has(r.id) ? ' rp-report-card--selected' : ''}`}>
+                <label className="rp-report-check">
+                  <input type="checkbox" checked={savedSelected.has(r.id)} onChange={() => toggleSavedSelect(r.id)} />
+                </label>
+                <div className="rp-report-info">
+                  <span className="rp-report-name">{r.name}</span>
+                  <span className="rp-report-meta">
+                    <span className="rp-report-date">{formatReportDate(r.createdAt)}</span>
+                    {r.summary && <span className="rp-report-summary">{r.summary}</span>}
+                  </span>
+                </div>
+                <div className="rp-report-actions">
+                  <button
+                    className="rp-report-dl-btn"
+                    title="Download PDF"
+                    onClick={() => downloadDataUrl(r.dataUrl, `${r.name.replace(/\s+/g, '-').toLowerCase()}.pdf`)}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  </button>
+                  <button
+                    className="rp-report-del-btn"
+                    title="Delete report"
+                    onClick={() => removeReport(r.id)}
+                  >
+                    <TrashIcon size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {sectionSelected.length > 0 && (
+          <div className="rp-section-actions">
+            <span className="rp-selected-count">{sectionSelected.length} selected</span>
+            <button
+              className="ps-btn ps-btn--secondary rp-delete-btn"
+              onClick={() => {
+                setDeleteTarget({ type: 'saved', ids: new Set(sectionSelected.map((r) => r.id)) });
+                setShowDeleteConfirm(true);
+              }}
+            >
+              <TrashIcon size={14} /> Delete Selected
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="page-container">
       <div className="ps-page">
         <h1 className="ps-page-title">Reports</h1>
+        <p className="rp-page-subtitle">All your generated reports in one place, grouped by type.</p>
 
-        {/* Loading overlay */}
         {generating && (
           <div className="report-overlay">
             <LoadingCoin text="Generating report…" />
           </div>
         )}
 
-        {/* Scenario selection */}
-        <div className="ps-card rp-card">
-          <div className="rp-card-header">
-            <h2 className="ps-card-title">Select Scenarios</h2>
+        {/* ═══ Take Home Pay Reports ═══ */}
+        {renderSavedSection('take-home-pay', thpReports)}
+
+        {/* ═══ Savings Calculator Reports ═══ */}
+        {renderSavedSection('savings-calculator', scReports)}
+
+        {/* ═══ Portfolio Simulation ═══ */}
+        <div className="rp-section">
+          <div className="rp-section-header">
+            <span className="rp-section-icon">{CATEGORY_META['portfolio-simulation'].icon}</span>
+            <h2 className="rp-section-title">{CATEGORY_META['portfolio-simulation'].label}</h2>
+            <span className="rp-section-count">{scenarios.length} scenario{scenarios.length !== 1 ? 's' : ''}</span>
           </div>
 
-          {scenarios.length === 0 && (
-            <p style={{ color: 'var(--text-muted)', padding: '16px 0' }}>
-              No saved scenarios found. Go to the Portfolio Simulator to create and save scenarios.
-            </p>
-          )}
-
-          {scenarios.length > 0 && (
+          {scenarios.length === 0 ? (
+            <p className="rp-empty-text">{CATEGORY_META['portfolio-simulation'].emptyText}</p>
+          ) : (
             <>
               <table className="rp-table">
                 <thead>
                   <tr>
                     <th className="rp-th-check">
                       <label className="rp-check-label">
-                        <input type="checkbox" checked={selected.size === scenarios.length && scenarios.length > 0} onChange={toggleAll} />
+                        <input type="checkbox" checked={psSelected.size === scenarios.length && scenarios.length > 0} onChange={togglePsAll} />
                       </label>
                     </th>
                     <th>Scenario</th>
@@ -729,10 +855,10 @@ export function ReportsPage() {
                 </thead>
                 <tbody>
                   {scenarios.map((s) => (
-                    <tr key={s.id} className={selected.has(s.id) ? 'rp-row-selected' : ''}>
+                    <tr key={s.id} className={psSelected.has(s.id) ? 'rp-row-selected' : ''}>
                       <td className="rp-td-check">
                         <label className="rp-check-label">
-                          <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} />
+                          <input type="checkbox" checked={psSelected.has(s.id)} onChange={() => togglePsSelect(s.id)} />
                         </label>
                       </td>
                       <td className="rp-td-name">{s.name}</td>
@@ -745,18 +871,21 @@ export function ReportsPage() {
               </table>
 
               <div className="rp-actions">
-                <span className="rp-selected-count">{selected.size} selected</span>
+                <span className="rp-selected-count">{psSelected.size} selected</span>
                 <div className="rp-actions-btns">
                   <button
                     className="ps-btn ps-btn--secondary rp-delete-btn"
-                    disabled={selected.size === 0}
-                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={psSelected.size === 0}
+                    onClick={() => {
+                      setDeleteTarget({ type: 'ps', ids: new Set(psSelected) });
+                      setShowDeleteConfirm(true);
+                    }}
                   >
                     <TrashIcon size={14} /> Remove
                   </button>
                   <button
                     className="ps-btn ps-btn--primary"
-                    disabled={selected.size === 0 || generating}
+                    disabled={psSelected.size === 0 || generating}
                     onClick={() => setShowFormatPicker(true)}
                   >
                     Generate Report
@@ -767,7 +896,7 @@ export function ReportsPage() {
           )}
         </div>
 
-        {/* Format picker */}
+        {/* Format picker overlay */}
         {showFormatPicker && (
           <div className="report-overlay" onClick={() => setShowFormatPicker(false)}>
             <div className="rp-format-picker" onClick={(e) => e.stopPropagation()}>
@@ -791,12 +920,12 @@ export function ReportsPage() {
           </div>
         )}
 
-        {/* Delete confirmation dialog */}
-        {showDeleteConfirm && (
+        {/* Delete confirmation */}
+        {showDeleteConfirm && deleteTarget && (
           <ConfirmDialog
-            message={`Remove ${selected.size} report${selected.size !== 1 ? 's' : ''}? This cannot be undone.`}
-            onCancel={() => setShowDeleteConfirm(false)}
-            onConfirm={handleDeleteSelected}
+            message={`Delete ${deleteTarget.ids.size} item${deleteTarget.ids.size !== 1 ? 's' : ''}? This cannot be undone.`}
+            onCancel={() => { setDeleteTarget(null); setShowDeleteConfirm(false); }}
+            onConfirm={deleteTarget.type === 'ps' ? handlePsDelete : handleSavedDelete}
           />
         )}
       </div>

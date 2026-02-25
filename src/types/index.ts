@@ -39,3 +39,17 @@ export interface NavItem {
   isGold?: boolean;
   isSettings?: boolean;
 }
+
+// ── Saved Reports ──
+export type ReportCategory = 'take-home-pay' | 'savings-calculator' | 'portfolio-simulation';
+
+export interface SavedReport {
+  id: string;
+  name: string;
+  category: ReportCategory;
+  createdAt: string; // ISO timestamp
+  /** Base64-encoded PDF data URL */
+  dataUrl: string;
+  /** Short summary line shown in the list */
+  summary: string;
+}

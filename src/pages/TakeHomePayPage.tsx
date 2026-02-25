@@ -5,6 +5,7 @@ import { useCalculator } from '../state/CalculatorContext';
 import { formatCurrency } from '../utils/currency';
 import { exportTakeHomePdf, exportHouseholdTakeHomePdf } from '../utils/exportPdf';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useSavedReports } from '../hooks/useSavedReports';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { LoginModal } from '../components/LoginModal';
 import type { CurrencyCode } from '../types';
@@ -474,6 +475,7 @@ export function TakeHomePayPage() {
   const [activePartner, setActivePartner] = useState<1 | 2>(1);
   const [breakdownPartner, setBreakdownPartner] = useState<1 | 2>(1);
   const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
+  const { addReport } = useSavedReports();
 
   const updateField = useCallback(<K extends keyof TakeHomePayData>(key: K, value: TakeHomePayData[K]) => {
     setData((prev) => ({ ...THP_DEFAULTS, ...prev, [key]: value, lastModified: new Date().toISOString() }));
@@ -753,9 +755,25 @@ export function TakeHomePayPage() {
                 className="thp-export-btn"
                 onClick={() => {
                   if (data.householdMode && result2) {
-                    gate(() => exportHouseholdTakeHomePdf(result, result2, data.partner1Name, data.partner2Name, data.region, data.partner2Region, currency.symbol));
+                    gate(() => {
+                      const dataUrl = exportHouseholdTakeHomePdf(result, result2, data.partner1Name, data.partner2Name, data.region, data.partner2Region, currency.symbol);
+                      addReport({
+                        name: `Household Take Home – ${data.partner1Name} & ${data.partner2Name}`,
+                        category: 'take-home-pay',
+                        dataUrl,
+                        summary: `Combined: ${formatCurrency(result.netMonthly + result2.netMonthly, currency.code)}/mo`,
+                      });
+                    });
                   } else {
-                    gate(() => exportTakeHomePdf(result, data.region, currency.symbol));
+                    gate(() => {
+                      const dataUrl = exportTakeHomePdf(result, data.region, currency.symbol);
+                      addReport({
+                        name: `Take Home Pay – ${formatCurrency(result.grossAnnual, currency.code)}/yr`,
+                        category: 'take-home-pay',
+                        dataUrl,
+                        summary: `Net: ${formatCurrency(result.netMonthly, currency.code)}/mo · ${data.region}`,
+                      });
+                    });
                   }
                 }}
               >
