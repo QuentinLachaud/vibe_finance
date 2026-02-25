@@ -5211,6 +5211,236 @@ body {
   flex-shrink: 0;
 }
 
+/* ── Household Mode Toggle ── */
+.thp-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.thp-mode-toggle {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.thp-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.thp-mode-btn:first-child {
+  border-right: 1px solid var(--border-color);
+}
+
+.thp-mode-btn--active {
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.thp-mode-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ── Partner Tabs ── */
+.thp-partner-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.thp-partner-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.thp-partner-tab--active {
+  color: var(--accent-primary);
+  font-weight: 700;
+  border-bottom-color: var(--accent-primary);
+  background: rgba(34, 211, 238, 0.04);
+}
+
+.thp-partner-tab:hover:not(.thp-partner-tab--active) {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* ── Editable Partner Name ── */
+.thp-name-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+
+.thp-name-display:hover {
+  border-bottom-color: var(--text-muted);
+}
+
+.thp-name-display svg {
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+
+.thp-name-display:hover svg {
+  opacity: 0.8;
+}
+
+.thp-name-input {
+  background: var(--bg-input);
+  border: 1px solid var(--accent-primary);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  outline: none;
+  width: 140px;
+  text-align: center;
+}
+
+/* ── Household Partner Results ── */
+.thp-household-partners {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.thp-partner-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px 10px;
+  gap: 4px;
+}
+
+.thp-partner-result-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+
+.thp-partner-result-amount {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.thp-partner-result-period {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.thp-partner-result-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── Breakdown Partner Tabs ── */
+.thp-breakdown-partner-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  margin-bottom: 4px;
+}
+
+.thp-bd-tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.thp-bd-tab:first-child {
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+
+.thp-bd-tab:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.thp-bd-tab--active {
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent-primary);
+  font-weight: 700;
+  border-color: var(--accent-primary);
+}
+
+/* ── Household Mobile ── */
+@media (max-width: 480px) {
+  .thp-header-top {
+    flex-direction: column;
+  }
+
+  .thp-mode-toggle {
+    width: 100%;
+  }
+
+  .thp-mode-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .thp-household-partners {
+    grid-template-columns: 1fr;
+  }
+
+  .thp-partner-result-amount {
+    font-size: 28px;
+  }
+}
+
 /* ═══════════════════════════════════════════════
    Savings Calculator — Button Cleanup
    ═══════════════════════════════════════════════ */
