@@ -9,6 +9,10 @@ import {
   monthlySavings,
   savingsRate,
 } from '../utils/calculations';
+import { exportSavingsCalcPdf } from '../utils/exportPdf';
+import { useSavedReports } from '../hooks/useSavedReports';
+import { useAuthGate } from '../hooks/useAuthGate';
+import { LoginModal } from '../components/LoginModal';
 import { IncomeSection } from '../components/calculator/IncomeSection';
 import { ExpensesSection } from '../components/calculator/ExpensesSection';
 import { DonutChart, DonutLegend } from '../components/DonutChart';
@@ -31,6 +35,9 @@ export function CalculatorPage() {
   const { currency } = useCurrency();
   const navigate = useNavigate();
   const [chartView, setChartView] = useState<ChartView>('expenses');
+  const { addReport } = useSavedReports();
+  const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
+  const [reportName, setReportName] = useState('');
 
   const monthlyIncome = normaliseToMonthly(state.income, state.incomeFrequency);
   const expTotal = totalExpenses(state.expenses);
@@ -164,6 +171,51 @@ export function CalculatorPage() {
           </button>
         </div>
       )}
+
+      {/* Export / Save Report */}
+      <div className="sc-export-section">
+        <div className="sc-export-row">
+          <input
+            type="text"
+            className="sc-report-name-input"
+            placeholder="Report name (e.g. April Budget)"
+            value={reportName}
+            onChange={(e) => setReportName(e.target.value)}
+          />
+          <button
+            className="thp-export-btn"
+            onClick={() => {
+              gate(() => {
+                const name = reportName.trim() || `Savings Report – ${new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`;
+                const pdfData = {
+                  name,
+                  income: state.income,
+                  incomeFrequency: state.incomeFrequency,
+                  monthlyIncome: monthlyIncome,
+                  expenses: state.expenses.map((e) => ({ name: e.name, amount: e.amount, icon: e.icon })),
+                  totalExpenses: expTotal,
+                  monthlySavings: savings,
+                  annualSavings: savings * 12,
+                  savingsRate: rate,
+                };
+                const dataUrl = exportSavingsCalcPdf(pdfData, currency.symbol);
+                addReport({
+                  name,
+                  category: 'savings-calculator',
+                  dataUrl,
+                  summary: `${formatCurrency(savings, currency.code)}/mo savings · ${rate}% rate`,
+                });
+                setReportName('');
+              });
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export &amp; Save Report
+          </button>
+        </div>
+      </div>
+
+      {showLogin && <LoginModal onSuccess={onLoginSuccess} onClose={onLoginClose} />}
     </div>
   );
 }
