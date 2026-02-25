@@ -44,40 +44,6 @@ const FEATURES = [
   },
 ];
 
-// ── Animated counter ──
-
-function AnimatedNumber({ target, duration = 2000 }: { target: number; duration?: number }) {
-  const [value, setValue] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const started = useRef(false);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true;
-          const start = performance.now();
-          const animate = (now: number) => {
-            const elapsed = now - start;
-            const progress = Math.min(elapsed / duration, 1);
-            // ease-out quad
-            const eased = 1 - (1 - progress) * (1 - progress);
-            setValue(Math.round(eased * target));
-            if (progress < 1) requestAnimationFrame(animate);
-          };
-          requestAnimationFrame(animate);
-        }
-      },
-      { threshold: 0.5 },
-    );
-    observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [target, duration]);
-
-  return <span ref={ref}>{value.toLocaleString()}</span>;
-}
-
 // ── Feature card with staggered entrance ──
 
 function FeatureCard({
@@ -146,13 +112,16 @@ export function LandingPage() {
       <section className={`landing-hero ${heroVisible ? 'landing-hero--visible' : ''}`}>
         <div className="landing-hero-glow" />
         <h1 className="landing-hero-title">
-          Your finances,
+          Understand your money,
           <br />
-          <span className="landing-hero-accent">crystal clear.</span>
+          <span className="landing-hero-accent">step by step.</span>
         </h1>
         <p className="landing-hero-subtitle">
-          Free calculators for take-home pay, savings, compound interest,
-          net worth, and portfolio simulations — all in one place.
+          TakeHomeCalc helps you with what you take home,
+          how much you save, how your investments can grow, and where you are headed.
+        </p>
+        <p className="landing-hero-note">
+          Plan for the future you want
         </p>
 
         <div className="landing-hero-actions">
@@ -166,7 +135,7 @@ export function LandingPage() {
                 className="landing-cta-primary"
                 onClick={() => navigate('/calculator')}
               >
-                Go to Dashboard
+                Open Dashboard
               </button>
             </>
           ) : (
@@ -175,13 +144,13 @@ export function LandingPage() {
                 className="landing-cta-primary"
                 onClick={() => setShowLogin(true)}
               >
-                Get Started — it's free
+                Sign in and save your data
               </button>
               <button
                 className="landing-cta-secondary"
                 onClick={() => navigate('/calculator')}
               >
-                Try without an account
+                Try the tools now
               </button>
             </>
           )}
@@ -191,24 +160,24 @@ export function LandingPage() {
       {/* ── Stats ribbon ── */}
       <section className="landing-stats">
         <div className="landing-stat">
-          <span className="landing-stat-number"><AnimatedNumber target={6} /></span>
-          <span className="landing-stat-label">Financial tools</span>
+          <span className="landing-stat-number">6</span>
+          <span className="landing-stat-label">Core planning tools</span>
         </div>
         <div className="landing-stat">
-          <span className="landing-stat-number">100%</span>
-          <span className="landing-stat-label">Free forever</span>
+          <span className="landing-stat-number">Tax + NI</span>
+          <span className="landing-stat-label">Included in pay estimates</span>
         </div>
         <div className="landing-stat">
-          <span className="landing-stat-number"><AnimatedNumber target={0} /></span>
-          <span className="landing-stat-label">Ads or tracking</span>
+          <span className="landing-stat-number">PDF</span>
+          <span className="landing-stat-label">Reports when you need them</span>
         </div>
       </section>
 
       {/* ── Features grid ── */}
       <section className="landing-features">
-        <h2 className="landing-section-title">Everything you need</h2>
+        <h2 className="landing-section-title">What you can do here</h2>
         <p className="landing-section-subtitle">
-          Professional-grade financial calculators, designed for real people.
+          Pick a tool based on the question you need to answer right now.
         </p>
         <div className="landing-features-grid">
           {FEATURES.map((f, i) => (
@@ -219,16 +188,16 @@ export function LandingPage() {
 
       {/* ── CTA bottom ── */}
       <section className="landing-bottom-cta">
-        <h2 className="landing-bottom-title">Ready to take control?</h2>
+        <h2 className="landing-bottom-title">Start with one question</h2>
         <p className="landing-bottom-subtitle">
-          Sign up in seconds. Your data syncs across all your devices.
+          Start with take-home pay or savings, then build a full plan from there.
         </p>
         {!loading && !user && (
           <button
             className="landing-cta-primary"
             onClick={() => setShowLogin(true)}
           >
-            Create free account
+            Sign in and keep your progress
           </button>
         )}
         {!loading && user && (
