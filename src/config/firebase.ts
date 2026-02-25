@@ -1,7 +1,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getAnalytics, isSupported, logEvent, type Analytics } from 'firebase/analytics';
+import { getAnalytics, isSupported, logEvent, setAnalyticsCollectionEnabled, type Analytics } from 'firebase/analytics';
 
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY as string | undefined;
 const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined;
@@ -34,7 +34,7 @@ type PageViewPayload = {
   page_location?: string;
 };
 
-let pendingPageView: PageViewPayload | null = null;
+const pendingPageViews: PageViewPayload[] = [];
 
 if (firebaseEnabled) {
   try {
@@ -54,9 +54,12 @@ if (app && typeof window !== 'undefined' && measurementId) {
       if (!supported || !app) return;
 
       analytics = getAnalytics(app);
-      if (pendingPageView) {
-        logEvent(analytics, 'page_view', pendingPageView);
-        pendingPageView = null;
+      setAnalyticsCollectionEnabled(analytics, true);
+
+      // Flush any page views queued before analytics was ready
+      while (pendingPageViews.length > 0) {
+        const payload = pendingPageViews.shift()!;
+        logEvent(analytics, 'page_view', payload);
       }
     })
     .catch((err) => {
@@ -72,7 +75,7 @@ export function trackPageView(path: string, title?: string): void {
   };
 
   if (!analytics) {
-    pendingPageView = payload;
+    pendingPageViews.push(payload);
     return;
   }
 
