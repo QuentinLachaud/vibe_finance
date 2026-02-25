@@ -1,25 +1,17 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
+import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getAnalytics, isSupported, logEvent, type Analytics } from 'firebase/analytics';
 
-/* ── Read Vite env vars ── */
-const apiKey         = "AIzaSyAl2bLDN0OleS72OmBCwUBQtWJRRlBOztU"         as string | undefined;
-const authDomain     = "takehomecalc-c86a7.firebaseapp.com"     as string | undefined;
-const projectId      = "takehomecalc-c86a7"      as string | undefined;
-const storageBucket  = "takehomecalc-c86a7.firebasestorage.app"  as string | undefined;
-const messagingSenderId = "350118392468" as string | undefined;
-const appId          = "1:350118392468:web:1186f627471bbb313eba81"          as string | undefined;
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY as string | undefined;
+const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined;
+const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
+const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined;
+const messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined;
+const appId = import.meta.env.VITE_FIREBASE_APP_ID as string | undefined;
+const measurementId = import.meta.env.VITE_FIREBASE_MEASUREMENT_ID as string | undefined;
 
 export const firebaseEnabled = Boolean(apiKey && authDomain && projectId && appId);
-
-// 🔍 Debug: see exactly what Vite injected
-console.log('[firebase] env loaded →', {
-  apiKey:    apiKey ? `${apiKey.slice(0, 8)}…` : '❌ MISSING',
-  authDomain: authDomain ?? '❌ MISSING',
-  projectId:  projectId ?? '❌ MISSING',
-  appId:      appId ? `${appId.slice(0, 12)}…` : '❌ MISSING',
-  firebaseEnabled,
-});
 
 const firebaseConfig = {
   apiKey,
@@ -28,27 +20,63 @@ const firebaseConfig = {
   storageBucket,
   messagingSenderId,
   appId,
+  measurementId,
 };
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
-let googleProvider: GoogleAuthProvider | null = null;
 let db: Firestore | null = null;
+let analytics: Analytics | null = null;
+
+type PageViewPayload = {
+  page_path: string;
+  page_title?: string;
+  page_location?: string;
+};
+
+let pendingPageView: PageViewPayload | null = null;
 
 if (firebaseEnabled) {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
-    googleProvider = new GoogleAuthProvider();
-    googleProvider.addScope('email');
-    googleProvider.addScope('profile');
-    console.log('[firebase] ✅ initialized successfully');
   } catch (err) {
-    console.error('[firebase] ❌ init failed:', err);
+    console.error('[firebase] initialization failed:', err);
   }
 } else {
-  console.warn('[firebase] ⚠️  Firebase disabled — missing env vars');
+  console.warn('[firebase] Firebase disabled: missing required VITE_FIREBASE_* values.');
 }
 
-export { app, auth, googleProvider, db };
+if (app && typeof window !== 'undefined' && measurementId) {
+  void isSupported()
+    .then((supported) => {
+      if (!supported || !app) return;
+
+      analytics = getAnalytics(app);
+      if (pendingPageView) {
+        logEvent(analytics, 'page_view', pendingPageView);
+        pendingPageView = null;
+      }
+    })
+    .catch((err) => {
+      console.warn('[firebase] analytics unavailable:', err);
+    });
+}
+
+export function trackPageView(path: string, title?: string): void {
+  const payload: PageViewPayload = {
+    page_path: path,
+    page_title: title,
+    page_location: typeof window !== 'undefined' ? window.location.href : undefined,
+  };
+
+  if (!analytics) {
+    pendingPageView = payload;
+    return;
+  }
+
+  logEvent(analytics, 'page_view', payload);
+}
+
+export { app, auth, db, analytics };
