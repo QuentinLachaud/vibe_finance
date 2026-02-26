@@ -40,8 +40,19 @@ export interface NavItem {
   isSettings?: boolean;
 }
 
+// ── Saved Budgets ──
+export interface SavedBudget {
+  id: string;
+  name: string;
+  income: number;
+  incomeFrequency: IncomeFrequency;
+  expenses: Expense[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Saved Reports ──
-export type ReportCategory = 'take-home-pay' | 'savings-calculator' | 'portfolio-simulation';
+export type ReportCategory = 'take-home-pay' | 'savings-calculator' | 'portfolio-simulation' | 'net-worth';
 
 export interface SavedReport {
   id: string;

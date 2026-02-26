@@ -3660,6 +3660,212 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
+/* ── Calculator: Budget Selector ── */
+
+.sc-budget-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.sc-budget-selector {
+  position: relative;
+  flex: 1;
+  max-width: 340px;
+}
+
+.sc-budget-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.sc-budget-trigger:hover {
+  border-color: var(--accent-primary);
+}
+
+.sc-budget-trigger-text {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sc-budget-chevron {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.sc-budget-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  z-index: 100;
+  overflow: hidden;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.sc-budget-dropdown-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.sc-budget-dropdown-item {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.sc-budget-dropdown-item--active {
+  background: rgba(139,92,246,0.08);
+}
+
+.sc-budget-dropdown-load {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.sc-budget-dropdown-load:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.sc-budget-dropdown-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sc-budget-dropdown-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sc-budget-dropdown-del {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 6px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sc-budget-dropdown-del:hover {
+  background: rgba(239,68,68,0.12);
+  color: #ef4444;
+}
+
+.sc-budget-dropdown-divider {
+  height: 1px;
+  background: var(--border-color);
+}
+
+.sc-budget-save-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.sc-budget-save-input {
+  flex: 1;
+  padding: 7px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.sc-budget-save-input::placeholder {
+  color: var(--text-muted);
+}
+
+.sc-budget-save-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.sc-budget-save-btn {
+  padding: 7px 14px;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.sc-budget-save-btn:hover {
+  opacity: 0.85;
+}
+
+.sc-budget-update-btn {
+  padding: 8px 16px;
+  background: rgba(34,211,238,0.1);
+  color: #22d3ee;
+  border: 1px solid rgba(34,211,238,0.25);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.sc-budget-update-btn:hover {
+  background: rgba(34,211,238,0.18);
+}
+
+@media (max-width: 640px) {
+  .sc-budget-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sc-budget-selector {
+    max-width: none;
+  }
+}
+
 /* ── Calculator: Export Section ── */
 
 .sc-export-section {

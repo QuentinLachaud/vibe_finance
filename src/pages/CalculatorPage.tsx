@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../state/CurrencyContext';
 import { useCalculator } from '../state/CalculatorContext';
+import { useAuth } from '../state/AuthContext';
 import { formatCurrency } from '../utils/currency';
 import {
   normaliseToMonthly,
@@ -12,10 +13,16 @@ import {
 import { exportSavingsCalcPdf } from '../utils/exportPdf';
 import { useSavedReports } from '../hooks/useSavedReports';
 import { useAuthGate } from '../hooks/useAuthGate';
+import { usePersistedState } from '../hooks/usePersistedState';
 import { LoginModal } from '../components/LoginModal';
+import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
+import { TrashIcon } from '../components/Icons';
 import { IncomeSection } from '../components/calculator/IncomeSection';
 import { ExpensesSection } from '../components/calculator/ExpensesSection';
 import { DonutChart, DonutLegend } from '../components/DonutChart';
+import { loadBudgets, saveBudget, removeBudget } from '../services/userDataService';
+import type { SavedBudget } from '../types';
+import { generateId } from '../utils/ids';
 
 const CHART_COLORS = [
   '#3b82f6', // Housing – blue
@@ -31,13 +38,116 @@ const CHART_COLORS = [
 type ChartView = 'expenses' | 'flow';
 
 export function CalculatorPage() {
-  const { state } = useCalculator();
+  const { state, dispatch } = useCalculator();
   const { currency } = useCurrency();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [chartView, setChartView] = useState<ChartView>('expenses');
   const { addReport } = useSavedReports();
   const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
   const [reportName, setReportName] = useState('');
+
+  // ── Saved budgets (localStorage + Firestore) ──
+  const [budgets, setBudgets] = usePersistedState<SavedBudget[]>('vf-saved-budgets', []);
+  const [activeBudgetId, setActiveBudgetId] = usePersistedState<string | null>('vf-active-budget', null);
+  const [budgetName, setBudgetName] = useState('');
+  const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowBudgetDropdown(false);
+      }
+    };
+    if (showBudgetDropdown) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showBudgetDropdown]);
+
+  // Sync budgets from Firestore on login
+  useEffect(() => {
+    if (!user) return;
+    loadBudgets(user.uid).then((remote) => {
+      if (remote.length > 0) {
+        setBudgets((local) => {
+          const byId = new Map(local.map((b) => [b.id, b]));
+          for (const rb of remote) {
+            const existing = byId.get(rb.id);
+            if (!existing || rb.updatedAt > existing.updatedAt) {
+              byId.set(rb.id, rb);
+            }
+          }
+          return Array.from(byId.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        });
+      }
+    }).catch(console.error);
+  }, [user, setBudgets]);
+
+  const handleSaveBudget = useCallback(() => {
+    const name = budgetName.trim() || `Budget ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+    const now = new Date().toISOString();
+    const budget: SavedBudget = {
+      id: generateId(),
+      name,
+      income: state.income,
+      incomeFrequency: state.incomeFrequency,
+      expenses: state.expenses.map((e) => ({ id: e.id, name: e.name, amount: e.amount, icon: e.icon })),
+      createdAt: now,
+      updatedAt: now,
+    };
+    setBudgets((prev) => [budget, ...prev]);
+    setActiveBudgetId(budget.id);
+    setBudgetName('');
+    if (user) saveBudget(user.uid, budget).catch(console.error);
+  }, [budgetName, state, setBudgets, setActiveBudgetId, user]);
+
+  const handleUpdateBudget = useCallback(() => {
+    if (!activeBudgetId) return;
+    const now = new Date().toISOString();
+    setBudgets((prev) => prev.map((b) => b.id === activeBudgetId ? {
+      ...b,
+      income: state.income,
+      incomeFrequency: state.incomeFrequency,
+      expenses: state.expenses.map((e) => ({ id: e.id, name: e.name, amount: e.amount, icon: e.icon })),
+      updatedAt: now,
+    } : b));
+    if (user) {
+      const budget = budgets.find((b) => b.id === activeBudgetId);
+      if (budget) {
+        saveBudget(user.uid, {
+          ...budget,
+          income: state.income,
+          incomeFrequency: state.incomeFrequency,
+          expenses: state.expenses.map((e) => ({ id: e.id, name: e.name, amount: e.amount, icon: e.icon })),
+          updatedAt: new Date().toISOString(),
+        }).catch(console.error);
+      }
+    }
+  }, [activeBudgetId, state, setBudgets, budgets, user]);
+
+  const handleLoadBudget = useCallback((budget: SavedBudget) => {
+    dispatch({
+      type: 'LOAD_STATE',
+      payload: {
+        income: budget.income,
+        incomeFrequency: budget.incomeFrequency,
+        expenses: budget.expenses,
+      },
+    });
+    setActiveBudgetId(budget.id);
+    setShowBudgetDropdown(false);
+  }, [dispatch, setActiveBudgetId]);
+
+  const handleDeleteBudget = useCallback((id: string) => {
+    setBudgets((prev) => prev.filter((b) => b.id !== id));
+    if (activeBudgetId === id) setActiveBudgetId(null);
+    if (user) removeBudget(user.uid, id).catch(console.error);
+    setShowDeleteConfirm(null);
+  }, [setBudgets, activeBudgetId, setActiveBudgetId, user]);
+
+  const activeBudget = budgets.find((b) => b.id === activeBudgetId) ?? null;
 
   const monthlyIncome = normaliseToMonthly(state.income, state.incomeFrequency);
   const expTotal = totalExpenses(state.expenses);
@@ -90,6 +200,76 @@ export function CalculatorPage() {
         <p className="page-subtitle">
           Calculate your savings rate based on your monthly income and expenses.
         </p>
+      </div>
+
+      {/* ── Budget selector ── */}
+      <div className="sc-budget-bar">
+        <div className="sc-budget-selector" ref={dropdownRef}>
+          <button
+            className="sc-budget-trigger"
+            onClick={() => setShowBudgetDropdown(!showBudgetDropdown)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span className="sc-budget-trigger-text">
+              {activeBudget ? activeBudget.name : 'Unsaved budget'}
+            </span>
+            <svg className="sc-budget-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+
+          {showBudgetDropdown && (
+            <div className="sc-budget-dropdown">
+              {budgets.length === 0 && (
+                <div className="sc-budget-dropdown-empty">No saved budgets yet</div>
+              )}
+              {budgets.map((b) => (
+                <div
+                  key={b.id}
+                  className={`sc-budget-dropdown-item${b.id === activeBudgetId ? ' sc-budget-dropdown-item--active' : ''}`}
+                >
+                  <button
+                    className="sc-budget-dropdown-load"
+                    onClick={() => handleLoadBudget(b)}
+                  >
+                    <span className="sc-budget-dropdown-name">{b.name}</span>
+                    <span className="sc-budget-dropdown-date">
+                      {new Date(b.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </button>
+                  <button
+                    className="sc-budget-dropdown-del"
+                    onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(b.id); }}
+                    title="Delete budget"
+                  >
+                    <TrashIcon size={13} />
+                  </button>
+                </div>
+              ))}
+              <div className="sc-budget-dropdown-divider" />
+              <div className="sc-budget-save-row">
+                <input
+                  type="text"
+                  className="sc-budget-save-input"
+                  placeholder="Budget name..."
+                  value={budgetName}
+                  onChange={(e) => setBudgetName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { handleSaveBudget(); setShowBudgetDropdown(false); } }}
+                />
+                <button
+                  className="sc-budget-save-btn"
+                  onClick={() => { handleSaveBudget(); setShowBudgetDropdown(false); }}
+                >
+                  Save New
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {activeBudget && (
+          <button className="sc-budget-update-btn" onClick={handleUpdateBudget}>
+            Update "{activeBudget.name}"
+          </button>
+        )}
       </div>
 
       <div className="calculator-grid">
@@ -216,6 +396,14 @@ export function CalculatorPage() {
       </div>
 
       {showLogin && <LoginModal onSuccess={onLoginSuccess} onClose={onLoginClose} />}
+
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          message="Delete this saved budget? This cannot be undone."
+          onCancel={() => setShowDeleteConfirm(null)}
+          onConfirm={() => handleDeleteBudget(showDeleteConfirm)}
+        />
+      )}
     </div>
   );
 }
