@@ -41,7 +41,7 @@ export interface NavItem {
 }
 
 // ── Saved Reports ──
-export type ReportCategory = 'take-home-pay' | 'savings-calculator' | 'portfolio-simulation';
+export type ReportCategory = 'take-home-pay' | 'savings-calculator' | 'portfolio-simulation' | 'net-worth';
 
 export interface SavedReport {
   id: string;

@@ -606,6 +606,11 @@ const CATEGORY_META: Record<ReportCategory, { label: string; icon: string; empty
     icon: '📈',
     emptyText: 'No portfolio reports yet. Select scenarios below to generate.',
   },
+  'net-worth': {
+    label: 'Net Worth',
+    icon: '📊',
+    emptyText: 'No net worth reports yet. Export one from the Net Worth page.',
+  },
 };
 
 // ── Download helpers ──
