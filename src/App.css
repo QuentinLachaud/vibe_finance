@@ -6429,3 +6429,153 @@ a.header-logo {
   margin-top: 6px;
 }
 
+/* ═══════════════════════════════════════════
+   Scenario Demo — animated onboarding
+   ═══════════════════════════════════════════ */
+
+.ps-demo-wrapper {
+  min-height: 520px;
+  display: flex;
+  align-items: stretch;
+}
+
+.ps-demo {
+  flex: 1;
+  padding: 32px 24px 28px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ps-demo-headline {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  animation: demoFadeDown 0.6s ease-out both;
+}
+
+.ps-demo-subhead {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+  line-height: 1.55;
+  max-width: 480px;
+  animation: demoFadeDown 0.6s 0.15s ease-out both;
+}
+
+/* ── Demo cards ── */
+
+.ps-demo-cards {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 520px;
+}
+
+.ps-demo-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 18px;
+  opacity: 0;
+  transform: translateX(-30px) scale(0.95);
+  transition: opacity 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: left;
+  min-width: 200px;
+  flex: 1;
+}
+
+.ps-demo-card--visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.ps-demo-card--deposit {
+  border-left: 3px solid #10b981;
+}
+
+.ps-demo-card--withdrawal {
+  border-left: 3px solid #f59e0b;
+}
+
+.ps-demo-card-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.ps-demo-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.ps-demo-card-amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Demo chart ── */
+
+.ps-demo-chart {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.ps-demo-chart--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Demo CTA ── */
+
+.ps-demo-cta {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.ps-demo-cta--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ps-demo-start-btn {
+  font-size: 16px !important;
+  padding: 14px 36px !important;
+  font-weight: 700;
+}
+
+@keyframes demoFadeDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 520px) {
+  .ps-demo-cards {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ps-demo-card {
+    min-width: unset;
+  }
+  .ps-demo-headline {
+    font-size: 19px;
+  }
+}
+

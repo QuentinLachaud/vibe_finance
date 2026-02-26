@@ -14,6 +14,7 @@ import {
 import { CashFlowCard } from '../components/portfolio/CashFlowCard';
 import { MonteCarloChart } from '../components/portfolio/MonteCarloChart';
 import { TimelineView } from '../components/portfolio/TimelineView';
+import { ScenarioDemo } from '../components/portfolio/ScenarioDemo';
 import { LoginModal } from '../components/LoginModal';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { TrashIcon, EditIcon } from '../components/Icons';
@@ -1165,14 +1166,10 @@ export function PortfolioSimulatorPage() {
             </div>
           )}
 
-          {/* Empty state */}
+          {/* Empty state — animated onboarding demo */}
           {!result && (
-            <div className="ps-card ps-empty-card">
-              <div className="ps-empty-icon">📊</div>
-              <h2 className="ps-empty-title">No Simulation Yet</h2>
-              <p className="ps-empty-text">
-                Add some cash flows to see your Monte Carlo simulation.
-              </p>
+            <div className="ps-card ps-demo-wrapper">
+              <ScenarioDemo onGetStarted={handleAddCashFlow} />
             </div>
           )}
         </div>
