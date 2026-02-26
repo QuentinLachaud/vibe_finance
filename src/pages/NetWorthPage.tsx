@@ -20,6 +20,8 @@ import { loadNetWorth, saveNetWorth } from '../services/userDataService';
 import { TrashIcon } from '../components/Icons';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { LoadingCoin } from '../components/LoadingCoin';
+import { exportNetWorthPdf } from '../utils/exportPdf';
+import { useSavedReports } from '../hooks/useSavedReports';
 import type { CurrencyCode } from '../types';
 
 // ── Types ──
@@ -848,7 +850,7 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-type NWReportFormat = 'html' | 'csv' | 'pdf';
+type NWReportFormat = 'html' | 'csv' | 'pdf' | 'pdf-native';
 
 function generateNWCSV(assets: Asset[], code: CurrencyCode): string {
   const fmt = (v: number) => formatCurrency(v, code);
@@ -987,6 +989,7 @@ function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
 export function NetWorthPage() {
   const { currency } = useCurrency();
   const { user } = useAuth();
+  const { addReport } = useSavedReports();
   const [data, setData] = usePersistedState<NetWorthData>('vf-net-worth-data', defaultData);
 
   // Load from Firestore on first login
@@ -1041,13 +1044,31 @@ export function NetWorthPage() {
           const html = generateNWHTML(assets, currency.code);
           const win = window.open('', '_blank');
           if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500); }
+        } else if (format === 'pdf-native') {
+          const totalAssets = assets.filter(a => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
+          const totalDebts = assets.filter(a => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
+          const nw = totalAssets - totalDebts;
+          const pdfData = {
+            assets: assets.map(a => ({ name: a.name, type: a.type, value: latestValue(a) })),
+            totalAssets,
+            totalDebts,
+            netWorth: nw,
+          };
+          const sym = currency.code === 'GBP' ? '\u00A3' : currency.code === 'EUR' ? '\u20AC' : '$';
+          const dataUrl = exportNetWorthPdf(pdfData, sym);
+          addReport({
+            name: `Net Worth — ${timestamp}`,
+            category: 'net-worth',
+            dataUrl,
+            summary: `Net Worth: ${sym}${Math.abs(nw).toLocaleString('en-GB', { maximumFractionDigits: 0 })} | ${assets.length} items`,
+          });
         }
       } catch (e) {
         console.error('Net worth report generation failed', e);
       }
       setGeneratingReport(false);
     }, 100);
-  }, [assets, currency.code]);
+  }, [assets, currency.code, addReport]);
 
   const totalNetWorth = useMemo(() => assets.reduce((sum, a) => sum + latestValue(a), 0), [assets]);
 
@@ -1365,13 +1386,17 @@ export function NetWorthPage() {
             <div className="rp-format-picker" onClick={(e) => e.stopPropagation()}>
               <h3 className="rp-format-title">Choose Report Format</h3>
               <div className="rp-format-options">
+                <button className="rp-format-btn" onClick={() => handleGenerateReport('pdf-native')}>
+                  <span className="rp-format-icon">📄</span>
+                  <div><span className="rp-format-label">PDF Snapshot</span><span className="rp-format-desc">Visual 1-page net worth report saved to Reports</span></div>
+                </button>
                 <button className="rp-format-btn" onClick={() => handleGenerateReport('html')}>
                   <span className="rp-format-icon">🌐</span>
                   <div><span className="rp-format-label">HTML</span><span className="rp-format-desc">Rich styled report, viewable in any browser</span></div>
                 </button>
                 <button className="rp-format-btn" onClick={() => handleGenerateReport('pdf')}>
-                  <span className="rp-format-icon">📄</span>
-                  <div><span className="rp-format-label">PDF</span><span className="rp-format-desc">Print-ready via browser print dialog</span></div>
+                  <span className="rp-format-icon">🖨️</span>
+                  <div><span className="rp-format-label">Print PDF</span><span className="rp-format-desc">Print-ready via browser print dialog</span></div>
                 </button>
                 <button className="rp-format-btn" onClick={() => handleGenerateReport('csv')}>
                   <span className="rp-format-icon">📊</span>
