@@ -20,7 +20,7 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import type { SavedScenario } from '../types';
+import type { SavedScenario, SavedBudget } from '../types';
 import type { NetWorthData } from '../pages/NetWorthPage';
 
 // ── Helpers ──
@@ -106,4 +106,22 @@ export async function loadUserSettings(uid: string): Promise<UserSettings | null
 export async function saveUserSettings(uid: string, settings: UserSettings): Promise<void> {
   if (!db) return;
   await setDoc(userDoc(uid, 'settings', 'prefs'), settings, { merge: true });
+}
+
+// ── Saved Budgets ──
+
+export async function loadBudgets(uid: string): Promise<SavedBudget[]> {
+  if (!db) return [];
+  const snap = await getDocs(userCol(uid, 'budgets'));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SavedBudget);
+}
+
+export async function saveBudget(uid: string, budget: SavedBudget): Promise<void> {
+  if (!db) return;
+  await setDoc(userDoc(uid, 'budgets', budget.id), budget as unknown as DocumentData);
+}
+
+export async function removeBudget(uid: string, budgetId: string): Promise<void> {
+  if (!db) return;
+  await deleteDoc(userDoc(uid, 'budgets', budgetId));
 }

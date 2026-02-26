@@ -22,7 +22,8 @@ type Action =
   | { type: 'SET_INCOME_FREQUENCY'; payload: IncomeFrequency }
   | { type: 'ADD_EXPENSE'; payload: { name: string; amount: number; icon?: string } }
   | { type: 'REMOVE_EXPENSE'; payload: string }
-  | { type: 'UPDATE_EXPENSE'; payload: { id: string; name?: string; amount?: number; icon?: string } };
+  | { type: 'UPDATE_EXPENSE'; payload: { id: string; name?: string; amount?: number; icon?: string } }
+  | { type: 'LOAD_STATE'; payload: CalculatorState };
 
 function reducer(state: CalculatorState, action: Action): CalculatorState {
   switch (action.type) {
@@ -55,6 +56,8 @@ function reducer(state: CalculatorState, action: Action): CalculatorState {
           e.id === action.payload.id ? { ...e, ...action.payload } : e,
         ),
       };
+    case 'LOAD_STATE':
+      return action.payload;
     default:
       return state;
   }
