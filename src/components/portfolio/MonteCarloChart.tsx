@@ -62,24 +62,46 @@ function ChartTooltip({ active, payload, label, currencyCode }: any) {
   );
 }
 
-/** Build histogram bins from the final distribution. */
-function buildHistogram(values: number[], numBins: number = 30) {
-  if (!values.length) return [];
-  const min = values[0];
-  const max = values[values.length - 1];
-  if (min === max) return [{ binStart: min, binEnd: max, count: values.length, label: '' }];
+function pctile(sorted: number[], p: number): number {
+  if (!sorted.length) return 0;
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
 
-  const binSize = (max - min) / numBins;
+/**
+ * Build histogram bins from the final distribution.
+ *
+ * Improvements over the naïve approach:
+ *  - Uses p2–p98 range so extreme outliers don't stretch the x-axis.
+ *  - Adaptive bin count (sqrt(n), clamped 12–25) so the shape breathes.
+ *  - Trims empty edge bins after construction.
+ */
+function buildHistogram(values: number[]) {
+  if (!values.length) return [];
+
+  // Use p2–p98 to avoid outlier stretch
+  const lo = pctile(values, 2);
+  const hi = pctile(values, 98);
+
+  if (lo === hi) return [{ binStart: lo, binEnd: hi, count: values.length, label: '' }];
+
+  // Adaptive bin count: sqrt(n) clamped to [12, 25]
+  const numBins = Math.min(25, Math.max(12, Math.ceil(Math.sqrt(values.length))));
+  const binSize = (hi - lo) / numBins;
   const bins: { binStart: number; binEnd: number; count: number; label: string }[] = [];
 
   for (let i = 0; i < numBins; i++) {
-    const binStart = min + i * binSize;
+    const binStart = lo + i * binSize;
     const binEnd = binStart + binSize;
     bins.push({ binStart, binEnd, count: 0, label: '' });
   }
 
+  // Clamp values outside the trimmed range into edge bins
   for (const v of values) {
-    let idx = Math.floor((v - min) / binSize);
+    let idx = Math.floor((v - lo) / binSize);
     if (idx >= numBins) idx = numBins - 1;
     if (idx < 0) idx = 0;
     bins[idx].count++;
@@ -93,16 +115,11 @@ function buildHistogram(values: number[], numBins: number = 30) {
     else bin.label = String(Math.round(mid));
   }
 
-  return bins;
-}
+  // Trim empty edge bins (keep at least 5)
+  while (bins.length > 5 && bins[0].count === 0) bins.shift();
+  while (bins.length > 5 && bins[bins.length - 1].count === 0) bins.pop();
 
-function pctile(sorted: number[], p: number): number {
-  if (!sorted.length) return 0;
-  const idx = (p / 100) * (sorted.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo];
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  return bins;
 }
 
 /** Distribution bar chart (back face of the flip card). */
@@ -115,7 +132,7 @@ function DistributionView({
   currencyCode: CurrencyCode;
   hoveredLabel: string;
 }) {
-  const bins = useMemo(() => buildHistogram(distribution, 30), [distribution]);
+  const bins = useMemo(() => buildHistogram(distribution), [distribution]);
   const p25 = useMemo(() => pctile(distribution, 25), [distribution]);
   const median = useMemo(() => pctile(distribution, 50), [distribution]);
   const p75 = useMemo(() => pctile(distribution, 75), [distribution]);
