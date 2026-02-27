@@ -950,7 +950,7 @@ function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
 </style></head>
 <body>
   <div class="report-header">
-    <div class="brand">Vibe Finance</div>
+    <div class="brand">TakeHomeCalc</div>
     <h1>Net Worth Report</h1>
     <div class="date">Generated ${now}</div>
   </div>
@@ -979,7 +979,7 @@ function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
   </div>
 
   <div class="report-footer">
-    Vibe Finance &middot; Net Worth Report &middot; ${assets.length} item${assets.length !== 1 ? 's' : ''}
+    TakeHomeCalc &middot; Net Worth Report &middot; ${assets.length} item${assets.length !== 1 ? 's' : ''}
   </div>
 </body></html>`;
 }

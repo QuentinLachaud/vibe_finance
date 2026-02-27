@@ -113,7 +113,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'vibe-finance-preferences.json';
+    link.download = 'takehomecalc-preferences.json';
     link.click();
     URL.revokeObjectURL(url);
     setStatus('Preferences exported.');
