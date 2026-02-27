@@ -844,11 +844,39 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    return;
+  }
+
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
   URL.revokeObjectURL(url);
+}
+
+function downloadDataUrlMobileSafe(dataUrl: string, filename: string) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    window.open(dataUrl, '_blank', 'noopener');
+    return;
+  }
+
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 type NWReportFormat = 'html' | 'csv' | 'pdf' | 'pdf-native';
@@ -1057,41 +1085,44 @@ export function NetWorthPage() {
   const handleGenerateReport = useCallback((format: NWReportFormat) => {
     setGeneratingReport(true);
     setShowReportPicker(false);
-    setTimeout(() => {
-      try {
-        const timestamp = new Date().toISOString().slice(0, 10);
-        if (format === 'csv') {
-          downloadBlob(new Blob([generateNWCSV(assets, currency.code)], { type: 'text/csv' }), `net-worth-report-${timestamp}.csv`);
-        } else if (format === 'html') {
-          downloadBlob(new Blob([generateNWHTML(assets, currency.code)], { type: 'text/html' }), `net-worth-report-${timestamp}.html`);
-        } else if (format === 'pdf') {
-          const html = generateNWHTML(assets, currency.code);
-          const win = window.open('', '_blank');
-          if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500); }
-        } else if (format === 'pdf-native') {
-          const totalAssets = assets.filter(a => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
-          const totalDebts = assets.filter(a => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
-          const nw = totalAssets - totalDebts;
-          const pdfData = {
-            assets: assets.map(a => ({ name: a.name, type: a.type, value: latestValue(a) })),
-            totalAssets,
-            totalDebts,
-            netWorth: nw,
-          };
-          const sym = currency.code === 'GBP' ? '\u00A3' : currency.code === 'EUR' ? '\u20AC' : '$';
-          const dataUrl = exportNetWorthPdf(pdfData, sym);
-          addReport({
-            name: `Net Worth — ${timestamp}`,
-            category: 'net-worth',
-            dataUrl,
-            summary: `Net Worth: ${sym}${Math.abs(nw).toLocaleString('en-GB', { maximumFractionDigits: 0 })} | ${assets.length} items`,
-          });
+    try {
+      const timestamp = new Date().toISOString().slice(0, 10);
+      if (format === 'csv') {
+        downloadBlob(new Blob([generateNWCSV(assets, currency.code)], { type: 'text/csv' }), `net-worth-report-${timestamp}.csv`);
+      } else if (format === 'html') {
+        downloadBlob(new Blob([generateNWHTML(assets, currency.code)], { type: 'text/html' }), `net-worth-report-${timestamp}.html`);
+      } else if (format === 'pdf') {
+        const html = generateNWHTML(assets, currency.code);
+        const win = window.open('', '_blank');
+        if (win) {
+          win.document.write(html);
+          win.document.close();
+          setTimeout(() => win.print(), 500);
         }
-      } catch (e) {
-        console.error('Net worth report generation failed', e);
+      } else if (format === 'pdf-native') {
+        const totalAssets = assets.filter(a => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
+        const totalDebts = assets.filter(a => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
+        const nw = totalAssets - totalDebts;
+        const pdfData = {
+          assets: assets.map(a => ({ name: a.name, type: a.type, value: latestValue(a) })),
+          totalAssets,
+          totalDebts,
+          netWorth: nw,
+        };
+        const sym = currency.code === 'GBP' ? '\u00A3' : currency.code === 'EUR' ? '\u20AC' : '$';
+        const dataUrl = exportNetWorthPdf(pdfData, sym, true);
+        downloadDataUrlMobileSafe(dataUrl, `net-worth-snapshot-${timestamp}.pdf`);
+        addReport({
+          name: `Net Worth — ${timestamp}`,
+          category: 'net-worth',
+          dataUrl,
+          summary: `Net Worth: ${sym}${Math.abs(nw).toLocaleString('en-GB', { maximumFractionDigits: 0 })} | ${assets.length} items`,
+        });
       }
-      setGeneratingReport(false);
-    }, 100);
+    } catch (e) {
+      console.error('Net worth report generation failed', e);
+    }
+    setGeneratingReport(false);
   }, [assets, currency.code, addReport]);
 
   const totalNetWorth = useMemo(() => assets.reduce((sum, a) => sum + latestValue(a), 0), [assets]);

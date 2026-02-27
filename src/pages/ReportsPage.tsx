@@ -46,6 +46,15 @@ function describeType(t: CashFlow['type']): string {
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    return;
+  }
+
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
@@ -616,6 +625,14 @@ const CATEGORY_META: Record<ReportCategory, { label: string; icon: string; empty
 // ── Download helpers ──
 
 function downloadDataUrl(dataUrl: string, filename: string) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    window.open(dataUrl, '_blank', 'noopener');
+    return;
+  }
+
   const a = document.createElement('a');
   a.href = dataUrl;
   a.download = filename;
@@ -642,6 +659,8 @@ export function ReportsPage() {
   const [psSelected, setPsSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [showFormatPicker, setShowFormatPicker] = useState(false);
+  const [showSavedFormatPicker, setShowSavedFormatPicker] = useState(false);
+  const [savedDownloadTarget, setSavedDownloadTarget] = useState<{ name: string; dataUrl: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'saved'; ids: Set<string> } | { type: 'ps'; ids: Set<string> } | null>(null);
 
@@ -736,6 +755,18 @@ export function ReportsPage() {
     [selectedScenarios, currency.code, volatility, numPaths],
   );
 
+  const downloadSavedReportAs = useCallback((format: 'pdf') => {
+    if (!savedDownloadTarget) return;
+    if (format === 'pdf') {
+      downloadDataUrl(
+        savedDownloadTarget.dataUrl,
+        `${savedDownloadTarget.name.replace(/\s+/g, '-').toLowerCase()}.pdf`,
+      );
+    }
+    setShowSavedFormatPicker(false);
+    setSavedDownloadTarget(null);
+  }, [savedDownloadTarget]);
+
   // Group saved reports by category
   const thpReports = useMemo(() => savedReports.filter((r) => r.category === 'take-home-pay'), [savedReports]);
   const scReports = useMemo(() => savedReports.filter((r) => r.category === 'savings-calculator'), [savedReports]);
@@ -780,7 +811,10 @@ export function ReportsPage() {
                   <button
                     className="rp-report-dl-btn"
                     title="Download PDF"
-                    onClick={() => downloadDataUrl(r.dataUrl, `${r.name.replace(/\s+/g, '-').toLowerCase()}.pdf`)}
+                    onClick={() => {
+                      setSavedDownloadTarget({ name: r.name, dataUrl: r.dataUrl });
+                      setShowSavedFormatPicker(true);
+                    }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   </button>
@@ -848,56 +882,62 @@ export function ReportsPage() {
             <p className="rp-empty-text">{CATEGORY_META['portfolio-simulation'].emptyText}</p>
           ) : (
             <>
-              <table className="rp-table">
-                <thead>
-                  <tr>
-                    <th className="rp-th-check">
-                      <label className="rp-check-label">
-                        <input type="checkbox" checked={psSelected.size === scenarios.length && scenarios.length > 0} onChange={togglePsAll} />
-                      </label>
-                    </th>
-                    <th>Scenario</th>
-                    <th>Starting Balance</th>
-                    <th>Cash Flows</th>
-                    <th>Horizon</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scenarios.map((s) => (
-                    <tr key={s.id} className={psSelected.has(s.id) ? 'rp-row-selected' : ''}>
-                      <td className="rp-td-check">
+              <div className="rp-table-wrap">
+                <table className="rp-table rp-table--portfolio">
+                  <thead>
+                    <tr>
+                      <th className="rp-th-check">
                         <label className="rp-check-label">
-                          <input type="checkbox" checked={psSelected.has(s.id)} onChange={() => togglePsSelect(s.id)} />
+                          <input type="checkbox" checked={psSelected.size === scenarios.length && scenarios.length > 0} onChange={togglePsAll} />
                         </label>
-                      </td>
-                      <td className="rp-td-name">{s.name}</td>
-                      <td className="rp-td-num">{formatCurrency(s.startingBalance, currency.code)}</td>
-                      <td className="rp-td-num">{s.cashFlows.length}</td>
-                      <td>{s.simulationEnd ? formatMonth(s.simulationEnd) : 'Auto'}</td>
+                      </th>
+                      <th>Scenario</th>
+                      <th>Bal</th>
+                      <th>Flows</th>
+                      <th>Horizons</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {scenarios.map((s) => (
+                      <tr key={s.id} className={psSelected.has(s.id) ? 'rp-row-selected' : ''}>
+                        <td className="rp-td-check">
+                          <label className="rp-check-label">
+                            <input type="checkbox" checked={psSelected.has(s.id)} onChange={() => togglePsSelect(s.id)} />
+                          </label>
+                        </td>
+                        <td className="rp-td-name rp-td-name--scenario">{s.name}</td>
+                        <td className="rp-td-num">{formatCurrency(s.startingBalance, currency.code)}</td>
+                        <td className="rp-td-num">{s.cashFlows.length}</td>
+                        <td>{s.simulationEnd ? formatMonth(s.simulationEnd) : 'Auto'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               <div className="rp-actions">
                 <span className="rp-selected-count">{psSelected.size} selected</span>
                 <div className="rp-actions-btns">
                   <button
-                    className="ps-btn ps-btn--secondary rp-delete-btn"
+                    className="rp-report-dl-btn rp-generate-btn"
+                    disabled={psSelected.size === 0 || generating}
+                    onClick={() => setShowFormatPicker(true)}
+                    title="Download report"
+                    aria-label="Download report"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  </button>
+                  <button
+                    className="rp-report-del-btn"
                     disabled={psSelected.size === 0}
                     onClick={() => {
                       setDeleteTarget({ type: 'ps', ids: new Set(psSelected) });
                       setShowDeleteConfirm(true);
                     }}
+                    title="Delete selected"
+                    aria-label="Delete selected"
                   >
-                    <TrashIcon size={14} /> Remove
-                  </button>
-                  <button
-                    className="ps-btn ps-btn--primary"
-                    disabled={psSelected.size === 0 || generating}
-                    onClick={() => setShowFormatPicker(true)}
-                  >
-                    Generate Report
+                    <TrashIcon size={14} />
                   </button>
                 </div>
               </div>
@@ -925,6 +965,22 @@ export function ReportsPage() {
                 </button>
               </div>
               <button className="rp-format-cancel" onClick={() => setShowFormatPicker(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {/* Saved report format picker */}
+        {showSavedFormatPicker && savedDownloadTarget && (
+          <div className="report-overlay" onClick={() => { setShowSavedFormatPicker(false); setSavedDownloadTarget(null); }}>
+            <div className="rp-format-picker" onClick={(e) => e.stopPropagation()}>
+              <h3 className="rp-format-title">Choose Report Format</h3>
+              <div className="rp-format-options">
+                <button className="rp-format-btn" onClick={() => downloadSavedReportAs('pdf')}>
+                  <span className="rp-format-icon">📄</span>
+                  <div><span className="rp-format-label">PDF Snapshot</span><span className="rp-format-desc">Download the saved report PDF</span></div>
+                </button>
+              </div>
+              <button className="rp-format-cancel" onClick={() => { setShowSavedFormatPicker(false); setSavedDownloadTarget(null); }}>Cancel</button>
             </div>
           </div>
         )}

@@ -24,6 +24,23 @@ import { loadBudgets, saveBudget, removeBudget } from '../services/userDataServi
 import type { SavedBudget } from '../types';
 import { generateId } from '../utils/ids';
 
+function downloadDataUrlMobileSafe(dataUrl: string, filename: string) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    window.open(dataUrl, '_blank', 'noopener');
+    return;
+  }
+
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 const CHART_COLORS = [
   '#3b82f6', // Housing – blue
   '#f59e0b', // Groceries – amber
@@ -378,7 +395,8 @@ export function CalculatorPage() {
                   annualSavings: savings * 12,
                   savingsRate: rate,
                 };
-                const dataUrl = exportSavingsCalcPdf(pdfData, currency.symbol);
+                const dataUrl = exportSavingsCalcPdf(pdfData, currency.symbol, true);
+                downloadDataUrlMobileSafe(dataUrl, `savings-report-${name.replace(/\s+/g, '-').toLowerCase()}.pdf`);
                 addReport({
                   name,
                   category: 'savings-calculator',

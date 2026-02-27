@@ -2198,8 +2198,9 @@ body {
 
 .ps-grid {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
   gap: 28px;
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
@@ -2213,6 +2214,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
 }
 
 /* ── Card ── */
@@ -2814,6 +2816,10 @@ body {
   align-items: center;
 }
 
+.ps-result-item > * {
+  min-width: 0;
+}
+
 .ps-result-label {
   font-size: 14px;
   font-weight: 500;
@@ -2824,6 +2830,8 @@ body {
   font-size: 22px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .ps-result-value--cyan {
@@ -3670,6 +3678,32 @@ body {
   font-size: 13px;
 }
 
+.rp-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rp-table--portfolio {
+  table-layout: fixed;
+}
+
+.rp-table--portfolio th:nth-child(1),
+.rp-table--portfolio td:nth-child(1) {
+  width: 40px;
+}
+
+.rp-table--portfolio th:nth-child(2),
+.rp-table--portfolio td:nth-child(2) {
+  width: 35%;
+}
+
+.rp-td-name--scenario {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .rp-table thead {
   background: rgba(255,255,255,0.03);
 }
@@ -3988,6 +4022,12 @@ body {
   border-color: rgba(239,68,68,0.3);
 }
 
+.rp-report-dl-btn:disabled,
+.rp-report-del-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .rp-section-actions {
   display: flex;
   align-items: center;
@@ -3995,6 +4035,18 @@ body {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border-color);
+}
+
+.rp-generate-btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.rp-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Calculator: Budget Selector ── */
@@ -5449,9 +5501,10 @@ body {
 
 .thp-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.9fr);
   gap: 24px;
   align-items: start;
+  min-width: 0;
 }
 
 @media (max-width: 860px) {
@@ -5550,6 +5603,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 /* Input card */
@@ -5748,6 +5802,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
 }
 
 .thp-result-hero {
@@ -5784,7 +5839,7 @@ body {
 /* KPI row */
 .thp-kpi-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 12px;
 }
 
@@ -7629,7 +7684,35 @@ a.header-logo {
   }
 
   .rp-table {
-    min-width: 480px;
+    min-width: 0;
+  }
+
+  .rp-table--portfolio {
+    table-layout: fixed;
+    font-size: 11px;
+  }
+
+  .rp-table--portfolio th,
+  .rp-table--portfolio td {
+    padding: 7px 4px;
+  }
+
+  .rp-table--portfolio th {
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .rp-table--portfolio th:nth-child(2),
+  .rp-table--portfolio td:nth-child(2) {
+    width: 32%;
+  }
+
+  .rp-table--portfolio th:nth-child(3),
+  .rp-table--portfolio td:nth-child(3),
+  .rp-table--portfolio th:nth-child(5),
+  .rp-table--portfolio td:nth-child(5) {
+    white-space: nowrap;
   }
 }
 
