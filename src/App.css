@@ -6785,3 +6785,315 @@ a.header-logo {
   }
 }
 
+/* ═══════════════════════════════════════════════════════
+   Mobile UX — Net Worth, Portfolio Simulator, actions
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Touch devices: always show action buttons ── */
+@media (hover: none) and (pointer: coarse) {
+  .nw-asset-actions {
+    opacity: 1;
+  }
+
+  .ps-scenario-card-actions {
+    opacity: 1;
+  }
+}
+
+/* ── Net Worth mobile layout ── */
+@media (max-width: 768px) {
+  /* Asset card: stack layout for readability */
+  .nw-asset-card {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 8px;
+  }
+
+  .nw-asset-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .nw-asset-emoji {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .nw-asset-right {
+    width: 100%;
+    justify-content: space-between;
+    padding-left: 48px; /* align with text after emoji */
+  }
+
+  .nw-asset-value-col {
+    text-align: left;
+  }
+
+  .nw-asset-value {
+    font-size: 16px;
+  }
+
+  .nw-asset-date {
+    font-size: 11px;
+  }
+
+  .nw-asset-actions {
+    gap: 6px;
+  }
+
+  .nw-action-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Type group header */
+  .nw-type-group-header {
+    padding: 10px 4px;
+  }
+
+  .nw-type-group-name {
+    font-size: 13px;
+  }
+
+  .nw-type-group-total {
+    font-size: 14px;
+  }
+
+  /* Form: stack on mobile */
+  .nw-form {
+    padding: 16px 12px;
+  }
+
+  .nw-form-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nw-form-label {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .nw-value-row {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .nw-input--value {
+    width: 100%;
+    flex: 1;
+    min-width: 80px;
+  }
+
+  .nw-input--date {
+    width: 100%;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .nw-input--name {
+    font-size: 15px;
+  }
+
+  /* Sort bar: scroll if needed */
+  .nw-sort-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .nw-sort-btns {
+    flex-wrap: wrap;
+  }
+
+  .nw-sort-btn {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  /* Header and total card */
+  .nw-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .nw-total-card {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Chart cards */
+  .nw-chart-card {
+    padding: 16px 10px;
+  }
+
+  .nw-chart-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nw-chart-header-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* History chart inline */
+  .nw-asset-chart {
+    padding: 4px 4px 8px 4px;
+  }
+}
+
+/* ── Portfolio Simulator mobile layout ── */
+@media (max-width: 768px) {
+  /* Cards: tighter padding */
+  .ps-card {
+    padding: 16px 12px;
+  }
+
+  /* Form inputs: constrain to card width */
+  .ps-scenario-form {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .ps-currency-input,
+  .ps-numeric-input {
+    max-width: 100%;
+  }
+
+  .ps-currency-input input,
+  .ps-numeric-input input {
+    min-width: 0;
+    font-size: 15px;
+  }
+
+  .ps-type-selector {
+    flex-wrap: wrap;
+  }
+
+  .ps-type-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+
+  .ps-toggle {
+    width: 100%;
+  }
+
+  .ps-toggle-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 10px;
+  }
+
+  .ps-month-input {
+    font-size: 14px;
+  }
+
+  /* Scenario card actions visible on mobile */
+  .ps-scenario-card-actions {
+    position: static;
+    opacity: 1;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .ps-scenario-card {
+    padding: 12px;
+  }
+
+  .ps-scenario-amount {
+    font-size: 18px;
+  }
+
+  /* Flip container / Monte Carlo chart: reduce heights */
+  .ps-flip-container {
+    min-height: 340px;
+  }
+
+  .ps-chart-container {
+    height: 300px;
+  }
+
+  .ps-flip-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ps-survival-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  /* Results grid: tighter */
+  .ps-result-item {
+    gap: 4px;
+  }
+
+  .ps-result-value {
+    font-size: 16px;
+  }
+
+  /* Scenario manager card */
+  .ps-scn-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ps-scn-actions {
+    width: 100%;
+  }
+
+  .ps-scn-actions .ps-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .ps-scn-save-row {
+    flex-wrap: wrap;
+  }
+
+  .ps-scn-save-row .ps-text-input {
+    width: 100%;
+    flex: unset;
+  }
+
+  /* Distribution view */
+  .ps-dist-stats {
+    gap: 10px;
+  }
+
+  .ps-dist-stat-val {
+    font-size: 14px;
+  }
+
+  /* Timeline view tighter */
+  .ps-timeline-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* ── Extra-small screens (< 480px) ── */
+@media (max-width: 480px) {
+  .nw-asset-right {
+    padding-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .nw-asset-value {
+    font-size: 15px;
+  }
+
+  .nw-action-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .ps-type-btn {
+    flex: 1 1 100%;
+    font-size: 13px;
+  }
+}
