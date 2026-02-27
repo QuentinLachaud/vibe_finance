@@ -6120,6 +6120,57 @@ body {
   overflow-x: hidden;
 }
 
+/* ── Logged-in tools-only layout ── */
+
+.landing-page--authed {
+  padding-top: 20px;
+}
+
+.landing-tools-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 24px 8px;
+  max-width: 720px;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-tools-header--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.landing-tools-greeting {
+  font-size: clamp(22px, 4vw, 32px);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.landing-tools-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0;
+}
+
+.landing-features--authed {
+  padding-top: 24px;
+  padding-bottom: 40px;
+}
+
+.landing-features--authed .landing-features-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
 /* ── Hero ── */
 
 .landing-hero {
@@ -6352,9 +6403,24 @@ body {
   transform: translateX(4px);
 }
 
+/* Show arrow on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .landing-feature-arrow {
+    opacity: 0.5;
+  }
+}
+
 .landing-feature-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  color: var(--accent-primary);
+  margin-bottom: 14px;
+  flex-shrink: 0;
 }
 
 .landing-feature-title {
@@ -6375,11 +6441,12 @@ body {
   position: absolute;
   top: 28px;
   right: 20px;
-  font-size: 18px;
   color: var(--accent-primary);
   opacity: 0;
   transform: translateX(0);
   transition: opacity 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 /* ── Bottom CTA ── */
