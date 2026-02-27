@@ -4126,10 +4126,38 @@ body {
 .nw-type-group-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 6px 0;
   margin-bottom: 6px;
   border-bottom: 1px solid var(--border-color);
+  gap: 8px;
+}
+
+.nw-type-group-header--clickable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+  border-radius: 6px;
+  padding: 8px 6px;
+}
+
+.nw-type-group-header--clickable:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.nw-group-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+}
+
+.nw-type-group-header--open .nw-group-chevron {
+  transform: rotate(90deg);
 }
 
 .nw-type-group-name {
@@ -4140,11 +4168,21 @@ body {
   color: var(--text-muted);
 }
 
+.nw-type-group-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.06);
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
 .nw-type-group-total {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  margin-left: auto;
 }
 
 /* Asset card */
