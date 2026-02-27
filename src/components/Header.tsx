@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
@@ -36,6 +36,15 @@ export function Header() {
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileNavRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+
+  // Derive current page label for mobile dropdown trigger
+  const currentPageLabel = useMemo(() => {
+    const match = NAV_ITEMS.find((item) => {
+      if (item.path === '/') return location.pathname === '/';
+      return location.pathname.startsWith(item.path);
+    });
+    return match?.label || 'Menu';
+  }, [location.pathname]);
 
   // Close user menu on click outside
   useEffect(() => {
@@ -91,18 +100,27 @@ export function Header() {
           <span className="logo-text">TakeHomeCalc<span className="logo-tld">.co.uk</span></span>
         </Link>
 
-        {/* Hamburger toggle (mobile only) */}
+        {/* Mobile page dropdown trigger (mobile only) */}
         <button
-          className="mobile-menu-toggle"
+          className="mobile-page-trigger"
           onClick={toggleMobileNav}
-          aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
+          aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}
           aria-expanded={mobileNavOpen}
         >
-          <span className={`hamburger-icon ${mobileNavOpen ? 'hamburger-icon--open' : ''}`}>
-            <span />
-            <span />
-            <span />
-          </span>
+          <span className="mobile-page-trigger__label">{currentPageLabel}</span>
+          <svg
+            className={`mobile-page-trigger__chevron ${mobileNavOpen ? 'mobile-page-trigger__chevron--open' : ''}`}
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
 
         {/* Desktop Navigation */}
@@ -213,13 +231,13 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile Navigation Dropdown */}
       {mobileNavOpen && (
         <div className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} />
       )}
       <div
         ref={mobileNavRef}
-        className={`mobile-nav-drawer ${mobileNavOpen ? 'mobile-nav-drawer--open' : ''}`}
+        className={`mobile-nav-dropdown ${mobileNavOpen ? 'mobile-nav-dropdown--open' : ''}`}
       >
         <nav className="mobile-nav-list">
           {NAV_ITEMS.filter((item) => !item.isSettings).map((item) => (
@@ -241,7 +259,7 @@ export function Header() {
             }
             onClick={() => setMobileNavOpen(false)}
           >
-            <svg className="icon-gear" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="icon-gear" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
