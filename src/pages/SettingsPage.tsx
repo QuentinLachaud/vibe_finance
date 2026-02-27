@@ -113,7 +113,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'vibe-finance-preferences.json';
+    link.download = 'takehomecalc-preferences.json';
     link.click();
     URL.revokeObjectURL(url);
     setStatus('Preferences exported.');
@@ -212,6 +212,7 @@ export function SettingsPage() {
                 step={1}
                 value={simulationYears}
                 onChange={(e) => setSimulationYears(Number(e.target.value || 15))}
+                onFocus={(e) => e.target.select()}
               />
               <span className="settings-suffix">years</span>
               <button className="settings-btn settings-btn--primary" onClick={saveSimulationYears}>

@@ -452,7 +452,7 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Portfolio Simulation Report — Vibe Finance</title>
+<title>Portfolio Simulation Report — TakeHomeCalc</title>
 <style>
   :root {
     --brand: #8b5cf6; --brand-dark: #6d28d9;
@@ -568,7 +568,7 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
 </head>
 <body>
   <div class="report-header">
-    <div class="brand">Vibe Finance</div>
+    <div class="brand">TakeHomeCalc</div>
     <h1>Portfolio Simulation Report</h1>
     <div class="date">Generated ${now}</div>
   </div>
@@ -576,7 +576,7 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
     ${scenarioBlocks}
   </div>
   <div class="report-footer">
-    Vibe Finance &middot; Monte Carlo Portfolio Simulator &middot; ${reports.length} scenario${reports.length !== 1 ? 's' : ''} &middot; ${simPaths.toLocaleString()} simulations each
+    TakeHomeCalc &middot; Monte Carlo Portfolio Simulator &middot; ${reports.length} scenario${reports.length !== 1 ? 's' : ''} &middot; ${simPaths.toLocaleString()} simulations each
   </div>
 </body>
 </html>`;
@@ -719,9 +719,9 @@ export function ReportsPage() {
           const timestamp = new Date().toISOString().slice(0, 10);
 
           if (format === 'csv') {
-            downloadBlob(new Blob([generateCSV(reports, currency.code, numPaths)], { type: 'text/csv' }), `vibe-finance-report-${timestamp}.csv`);
+            downloadBlob(new Blob([generateCSV(reports, currency.code, numPaths)], { type: 'text/csv' }), `takehomecalc-report-${timestamp}.csv`);
           } else if (format === 'html') {
-            downloadBlob(new Blob([generateHTML(reports, currency.code, volatility, numPaths)], { type: 'text/html' }), `vibe-finance-report-${timestamp}.html`);
+            downloadBlob(new Blob([generateHTML(reports, currency.code, volatility, numPaths)], { type: 'text/html' }), `takehomecalc-report-${timestamp}.html`);
           } else if (format === 'pdf') {
             const html = generateHTML(reports, currency.code, volatility, numPaths);
             const win = window.open('', '_blank');
@@ -739,6 +739,7 @@ export function ReportsPage() {
   // Group saved reports by category
   const thpReports = useMemo(() => savedReports.filter((r) => r.category === 'take-home-pay'), [savedReports]);
   const scReports = useMemo(() => savedReports.filter((r) => r.category === 'savings-calculator'), [savedReports]);
+  const nwReports = useMemo(() => savedReports.filter((r) => r.category === 'net-worth'), [savedReports]);
 
   // Toggle saved report selection
   const toggleSavedSelect = useCallback((id: string) => {
@@ -831,6 +832,9 @@ export function ReportsPage() {
 
         {/* ═══ Savings Calculator Reports ═══ */}
         {renderSavedSection('savings-calculator', scReports)}
+
+        {/* ═══ Net Worth Reports ═══ */}
+        {renderSavedSection('net-worth', nwReports)}
 
         {/* ═══ Portfolio Simulation ═══ */}
         <div className="rp-section">

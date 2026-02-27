@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
@@ -18,6 +18,17 @@ function UserMenu({ user, onClose, onSignOut }: { user: User; onClose: () => voi
     <div className="user-menu">
       <div className="user-menu-name">{user.displayName || 'User'}</div>
       <div className="user-menu-email">{user.email}</div>
+      <NavLink
+        to="/settings"
+        className="user-menu-settings-link"
+        onClick={onClose}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+        Settings
+      </NavLink>
       <button className="user-menu-signout" onClick={handleSignOut}>
         Sign Out
       </button>
@@ -36,6 +47,15 @@ export function Header() {
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileNavRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+
+  // Derive current page label for mobile dropdown trigger
+  const currentPageLabel = useMemo(() => {
+    const match = NAV_ITEMS.find((item) => {
+      if (item.path === '/') return location.pathname === '/';
+      return location.pathname.startsWith(item.path);
+    });
+    return match?.label || 'Menu';
+  }, [location.pathname]);
 
   // Close user menu on click outside
   useEffect(() => {
@@ -83,26 +103,38 @@ export function Header() {
     setMobileNavOpen((v) => !v);
   }, []);
 
+  const isHomePage = location.pathname === '/';
+
   return (
     <header className="app-header">
       <div className="header-inner">
-        {/* Logo */}
+        {/* Logo — shows "Home" on mobile when not on home page */}
         <Link to="/" className="header-logo">
-          <span className="logo-text">TakeHomeCalc<span className="logo-tld">.co.uk</span></span>
+          <span className="logo-text logo-text--full">TakeHomeCalc<span className="logo-tld">.co.uk</span></span>
+          {!isHomePage && <span className="logo-text logo-text--short">Home</span>}
         </Link>
 
-        {/* Hamburger toggle (mobile only) */}
+        {/* Mobile page dropdown trigger (mobile only) */}
         <button
-          className="mobile-menu-toggle"
+          className="mobile-page-trigger"
           onClick={toggleMobileNav}
-          aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
+          aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}
           aria-expanded={mobileNavOpen}
         >
-          <span className={`hamburger-icon ${mobileNavOpen ? 'hamburger-icon--open' : ''}`}>
-            <span />
-            <span />
-            <span />
-          </span>
+          <span className="mobile-page-trigger__label">{currentPageLabel}</span>
+          <svg
+            className={`mobile-page-trigger__chevron ${mobileNavOpen ? 'mobile-page-trigger__chevron--open' : ''}`}
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
 
         {/* Desktop Navigation */}
@@ -119,20 +151,6 @@ export function Header() {
             </NavLink>
           ))}
         </nav>
-
-        {/* Settings (gear icon, desktop) */}
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            `nav-link nav-link--settings header-nav--desktop ${isActive ? 'nav-link--active' : ''}`
-          }
-          aria-label="Settings"
-        >
-          <svg className="icon-gear" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </NavLink>
 
         {/* Right controls (always visible) */}
         <div className="header-controls">
@@ -213,13 +231,13 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile Navigation Dropdown */}
       {mobileNavOpen && (
         <div className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} />
       )}
       <div
         ref={mobileNavRef}
-        className={`mobile-nav-drawer ${mobileNavOpen ? 'mobile-nav-drawer--open' : ''}`}
+        className={`mobile-nav-dropdown ${mobileNavOpen ? 'mobile-nav-dropdown--open' : ''}`}
       >
         <nav className="mobile-nav-list">
           {NAV_ITEMS.filter((item) => !item.isSettings).map((item) => (
@@ -234,19 +252,6 @@ export function Header() {
               {item.label}
             </NavLink>
           ))}
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `mobile-nav-link mobile-nav-link--settings ${isActive ? 'mobile-nav-link--active' : ''}`
-            }
-            onClick={() => setMobileNavOpen(false)}
-          >
-            <svg className="icon-gear" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-            Settings
-          </NavLink>
         </nav>
       </div>
 
