@@ -106,6 +106,34 @@ body {
   width: 100%;
   margin: 0 auto;
   padding: 24px 20px 48px;
+  will-change: transform;
+  transition: transform 0.22s ease-out;
+}
+
+/* Extra bottom padding when bottom nav is visible */
+@media (max-width: 768px) {
+  .app-main--has-bottom-nav {
+    padding-bottom: 80px;
+  }
+}
+
+/* ── Slide-in enter animations ── */
+@keyframes slideInFromRight {
+  from { opacity: 0; transform: translateX(60px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-60px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.app-main--slide-in-from-right {
+  animation: slideInFromRight 0.3s ease-out both;
+}
+
+.app-main--slide-in-from-left {
+  animation: slideInFromLeft 0.3s ease-out both;
 }
 
 /* ── Swipe Navigation Feedback (mobile) ── */
@@ -151,6 +179,75 @@ body {
   .swipe-nav-indicator,
   .swipe-loading-overlay {
     display: none;
+  }
+}
+
+/* ── Mobile Bottom Navigation ── */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 80;
+    height: 56px;
+    background: #0a0e18;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 2px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mobile-bottom-nav__tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+
+  .mobile-bottom-nav__tab--active {
+    color: var(--accent-primary);
+  }
+
+  /* Active indicator dot */
+  .mobile-bottom-nav__tab--active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+  }
+
+  .mobile-bottom-nav__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+  }
+
+  .mobile-bottom-nav__label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    line-height: 1;
   }
 }
 
@@ -2095,6 +2192,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .ps-grid {
@@ -7374,6 +7473,69 @@ a.header-logo {
   .ps-timeline-header {
     flex-wrap: wrap;
     gap: 6px;
+  }
+
+  /* Table: horizontal scroll on mobile */
+  .ps-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ps-table {
+    min-width: 520px;
+  }
+
+  .ps-table-header {
+    padding: 12px 12px;
+  }
+
+  /* Page title: smaller on mobile */
+  .ps-page .page-title {
+    font-size: 20px;
+  }
+
+  .ps-page .page-subtitle {
+    font-size: 13px;
+  }
+}
+
+/* ── Reports mobile layout ── */
+@media (max-width: 768px) {
+  .rp-section {
+    padding: 14px 12px;
+  }
+
+  .rp-section-title {
+    font-size: 15px;
+  }
+
+  .rp-report-card {
+    padding: 10px 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rp-report-name {
+    font-size: 13px;
+  }
+
+  .rp-report-meta {
+    font-size: 11px;
+  }
+
+  .rp-report-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* Table overflow */
+  .rp-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .rp-table {
+    min-width: 480px;
   }
 }
 

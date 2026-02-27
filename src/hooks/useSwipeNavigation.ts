@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 /** Ordered list of swipeable page paths (excludes settings / landing). */
-const SWIPE_PAGES = [
+export const SWIPE_PAGES = [
   '/take-home-pay',
   '/calculator',
   '/compound-interest',
@@ -14,6 +14,7 @@ const SWIPE_PAGES = [
 const SWIPE_THRESHOLD = 60; // px – minimum distance for a swipe
 const SWIPE_MAX_Y = 60;     // ignore if vertical scroll exceeds this
 const MOBILE_MAX_WIDTH = 768;
+const MAX_SLIDE_PX = 100;   // cap the visual content shift during drag
 
 export type SwipeDirection = 'left' | 'right';
 
@@ -22,6 +23,9 @@ type SwipeIndicatorState = {
   direction: SwipeDirection;
   progress: number; // 0..1
 };
+
+/** Slide direction for the exit / enter animations. */
+export type SlideDirection = 'left' | 'right' | null;
 
 /**
  * Enables horizontal swipe navigation between pages on mobile.
@@ -42,6 +46,15 @@ export function useSwipeNavigation() {
   });
   const [isNavigating, setIsNavigating] = useState(false);
 
+  /** Raw dx during an active drag (clamped). Used to slide the page content. */
+  const [swipeDx, setSwipeDx] = useState(0);
+
+  /** Direction of the last completed swipe — drives enter animation. */
+  const [slideDirection, setSlideDirection] = useState<SlideDirection>(null);
+
+  /** Current page index in SWIPE_PAGES (-1 if not a swipeable page). */
+  const currentPageIndex = SWIPE_PAGES.indexOf(location.pathname);
+
   const canSwipeTo = useCallback((direction: SwipeDirection) => {
     const idx = SWIPE_PAGES.indexOf(location.pathname);
     if (idx === -1) return false;
@@ -55,9 +68,11 @@ export function useSwipeNavigation() {
       if (idx === -1) return; // not a swipeable page
 
       if (direction === 'left' && idx < SWIPE_PAGES.length - 1) {
+        setSlideDirection('left');
         setIsNavigating(true);
         navigate(SWIPE_PAGES[idx + 1]);
       } else if (direction === 'right' && idx > 0) {
+        setSlideDirection('right');
         setIsNavigating(true);
         navigate(SWIPE_PAGES[idx - 1]);
       }
@@ -71,8 +86,16 @@ export function useSwipeNavigation() {
     return () => window.clearTimeout(timeout);
   }, [isNavigating]);
 
+  // Reset slide direction after the enter animation completes
+  useEffect(() => {
+    if (!slideDirection) return;
+    const timeout = window.setTimeout(() => setSlideDirection(null), 350);
+    return () => window.clearTimeout(timeout);
+  }, [slideDirection, location.pathname]);
+
   useEffect(() => {
     setIsNavigating(false);
+    setSwipeDx(0);
     setIndicator((prev) => ({ ...prev, visible: false, progress: 0 }));
   }, [location.pathname]);
 
@@ -105,20 +128,27 @@ export function useSwipeNavigation() {
       // Stop tracking when user is clearly scrolling vertically
       if (dy > SWIPE_MAX_Y && dy > Math.abs(dx)) {
         tracking.current = false;
+        setSwipeDx(0);
         setIndicator((prev) => ({ ...prev, visible: false, progress: 0 }));
         return;
       }
 
       if (Math.abs(dx) < 8) {
+        setSwipeDx(0);
         setIndicator((prev) => ({ ...prev, visible: false, progress: 0 }));
         return;
       }
 
       const direction: SwipeDirection = dx < 0 ? 'left' : 'right';
       if (!canSwipeTo(direction)) {
+        setSwipeDx(0);
         setIndicator((prev) => ({ ...prev, visible: false, progress: 0 }));
         return;
       }
+
+      // Clamp the visual shift
+      const clampedDx = Math.sign(dx) * Math.min(Math.abs(dx), MAX_SLIDE_PX);
+      setSwipeDx(clampedDx);
 
       setIndicator({
         visible: true,
@@ -132,6 +162,7 @@ export function useSwipeNavigation() {
       tracking.current = false;
 
       if (isInteractiveTarget(startTarget.current)) {
+        setSwipeDx(0);
         setIndicator((prev) => ({ ...prev, visible: false, progress: 0 }));
         return;
       }
@@ -140,6 +171,7 @@ export function useSwipeNavigation() {
       const dx = touch.clientX - startX.current;
       const dy = Math.abs(touch.clientY - startY.current);
 
+      setSwipeDx(0);
       setIndicator((prev) => ({ ...prev, visible: false, progress: 0 }));
 
       // Ignore if mostly vertical scroll
@@ -166,5 +198,8 @@ export function useSwipeNavigation() {
     mainRef,
     indicator,
     isNavigating,
+    swipeDx,
+    slideDirection,
+    currentPageIndex,
   };
 }
