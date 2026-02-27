@@ -208,6 +208,13 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
   const [flipped, setFlipped] = useState(false);
   const [hoveredLabel, setHoveredLabel] = useState('');
 
+  const yAxisDomain = useMemo<[number, number]>(() => {
+    if (!data.length) return [0, 0];
+    const minP10 = Math.min(...data.map((d) => d.p10));
+    const maxP75 = Math.max(...data.map((d) => d.p75));
+    return [Math.min(0, minP10), maxP75];
+  }, [data]);
+
   // Pre-compute stacked band data for correct layering
   const chartData = useMemo(() => {
     return data.map((d) => ({
@@ -250,7 +257,7 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
           <ResponsiveContainer width="100%" height={380}>
             <AreaChart
               data={chartData}
-              margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+              margin={{ top: 8, right: 2, left: -8, bottom: 18 }}
               onMouseMove={handleMouseMove}
             >
               <defs>
@@ -271,6 +278,8 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
                 tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
                 axisLine={{ stroke: 'var(--border-color)' }}
                 tickLine={false}
+                tickMargin={8}
+                height={30}
                 interval="preserveStartEnd"
               />
 
@@ -278,6 +287,9 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
                 tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
+                tickMargin={4}
+                width={34}
+                domain={yAxisDomain}
                 tickFormatter={(v) => {
                   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
                   if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;

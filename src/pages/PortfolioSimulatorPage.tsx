@@ -520,6 +520,7 @@ export function PortfolioSimulatorPage() {
   const pendingSwitchRef = useRef<string | null>(null);
   const [pendingEditId, setPendingEditId] = useState<string | null>(null);
   const [horizonMode, setHorizonMode] = usePersistedState<'date' | 'years'>('vf-ps-horizon-mode', 'years');
+  const [cashFlowsOpen, setCashFlowsOpen] = useState(false);
   const [tableOpen, setTableOpen] = useState(false);
   const [showSaveAs, setShowSaveAs] = useState(false);
   const { gate, showLogin: showLoginModal, onLoginSuccess, onLoginClose } = useAuthGate();
@@ -1024,41 +1025,52 @@ export function PortfolioSimulatorPage() {
           {/* Cash Flow List */}
           {cashFlows.length > 0 && (
             <div className="ps-card">
-              <h2 className="ps-card-title">
-                Cash Flows
-                <span className="ps-scenario-count">{cashFlows.length}</span>
-              </h2>
+              <button
+                className="ps-cashflow-toggle"
+                onClick={() => setCashFlowsOpen((v) => !v)}
+                aria-expanded={cashFlowsOpen}
+              >
+                <span className="ps-cashflow-toggle-title">
+                  Cash Flows
+                  <span className="ps-scenario-count">{cashFlows.length}</span>
+                </span>
+                <span className={`ps-cashflow-arrow ${cashFlowsOpen ? 'ps-cashflow-arrow--open' : ''}`}>
+                  ▼
+                </span>
+              </button>
 
-              {/* Filter pills */}
-              <div className="ps-filter">
-                {(['all', 'deposits', 'withdrawals'] as const).map((f) => (
-                  <button
-                    key={f}
-                    className={`ps-filter-btn ${cashFlowFilter === f ? 'ps-filter-btn--active' : ''}`}
-                    onClick={() => setCashFlowFilter(f)}
-                  >
-                    {f === 'all' ? 'All' : f === 'deposits' ? '📥 Deposits' : '📤 Withdrawals'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="ps-scenario-list">
-                {cashFlows
-                  .filter((cf) => {
-                    if (cashFlowFilter === 'all') return true;
-                    if (cashFlowFilter === 'deposits') return cf.type !== 'recurring-withdrawal';
-                    return cf.type === 'recurring-withdrawal';
-                  })
-                  .map((cf) => (
-                    <CashFlowCard
-                      key={cf.id}
-                      cashFlow={cf}
-                      currencyCode={currency.code}
-                      onEdit={handleEditCashFlow}
-                      onDelete={handleDeleteCashFlow}
-                      onToggle={handleToggleCashFlow}
-                    />
+              <div className={`ps-cashflow-body ${cashFlowsOpen ? 'ps-cashflow-body--open' : ''}`}>
+                {/* Filter pills */}
+                <div className="ps-filter">
+                  {(['all', 'deposits', 'withdrawals'] as const).map((f) => (
+                    <button
+                      key={f}
+                      className={`ps-filter-btn ${cashFlowFilter === f ? 'ps-filter-btn--active' : ''}`}
+                      onClick={() => setCashFlowFilter(f)}
+                    >
+                      {f === 'all' ? 'All' : f === 'deposits' ? '📥 Deposits' : '📤 Withdrawals'}
+                    </button>
                   ))}
+                </div>
+
+                <div className="ps-scenario-list">
+                  {cashFlows
+                    .filter((cf) => {
+                      if (cashFlowFilter === 'all') return true;
+                      if (cashFlowFilter === 'deposits') return cf.type !== 'recurring-withdrawal';
+                      return cf.type === 'recurring-withdrawal';
+                    })
+                    .map((cf) => (
+                      <CashFlowCard
+                        key={cf.id}
+                        cashFlow={cf}
+                        currencyCode={currency.code}
+                        onEdit={handleEditCashFlow}
+                        onDelete={handleDeleteCashFlow}
+                        onToggle={handleToggleCashFlow}
+                      />
+                    ))}
+                </div>
               </div>
             </div>
           )}

@@ -3069,6 +3069,47 @@ body {
   margin-bottom: 16px;
 }
 
+.ps-cashflow-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.ps-cashflow-toggle-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ps-cashflow-arrow {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.25s;
+}
+
+.ps-cashflow-arrow--open {
+  transform: rotate(180deg);
+}
+
+.ps-cashflow-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+}
+
+.ps-cashflow-body--open {
+  max-height: 1200px;
+}
+
 .ps-filter-btn {
   padding: 5px 12px;
   border-radius: 20px;
@@ -3505,6 +3546,7 @@ body {
   width: 100%;
   min-height: 460px;
   perspective: 1200px;
+  overflow: hidden;
 }
 
 .ps-flip-container > .ps-flip-face {
@@ -7345,6 +7387,17 @@ a.header-logo {
 
 /* ── Portfolio Simulator mobile layout ── */
 @media (max-width: 768px) {
+  .ps-page,
+  .ps-grid,
+  .ps-left,
+  .ps-right,
+  .ps-card,
+  .ps-flip-container,
+  .ps-flip-container > .ps-flip-face {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   /* Cards: tighter padding */
   .ps-card {
     padding: 16px 12px;
@@ -7406,9 +7459,36 @@ a.header-logo {
     font-size: 18px;
   }
 
-  /* Flip container / Monte Carlo chart: reduce heights */
+  /* Flip container / Monte Carlo chart: avoid clipping by using flow layout on mobile */
   .ps-flip-container {
-    min-height: 340px;
+    min-height: 0;
+    perspective: none;
+    overflow: hidden;
+  }
+
+  .ps-flip-container > .ps-flip-face {
+    position: static;
+    height: auto;
+    transform: none;
+    transition: none;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+  }
+
+  .ps-flip-face--back {
+    display: none;
+  }
+
+  .ps-flip-container--flipped .ps-flip-face--front {
+    display: none;
+  }
+
+  .ps-flip-container--flipped .ps-flip-face--back {
+    display: block;
+  }
+
+  .ps-flip-face--front .ps-chart-container {
+    overflow: visible;
   }
 
   .ps-chart-container {
@@ -7432,6 +7512,20 @@ a.header-logo {
 
   .ps-result-value {
     font-size: 16px;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .ps-result-item > * {
+    min-width: 0;
+  }
+
+  .ps-scenario-amount,
+  .ps-scenario-dates,
+  .ps-scenario-growth {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   /* Scenario manager card */
