@@ -10,6 +10,23 @@ import { useAuthGate } from '../hooks/useAuthGate';
 import { LoginModal } from '../components/LoginModal';
 import type { CurrencyCode } from '../types';
 
+function downloadDataUrlMobileSafe(dataUrl: string, filename: string) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS) {
+    window.open(dataUrl, '_blank', 'noopener');
+    return;
+  }
+
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 // ══════════════════════════════════════════════
 //  UK Tax/NI calculation engine (2025-26 rates)
 // ══════════════════════════════════════════════
@@ -759,7 +776,8 @@ export function TakeHomePayPage() {
                 onClick={() => {
                   if (data.householdMode && result2) {
                     gate(() => {
-                      const dataUrl = exportHouseholdTakeHomePdf(result, result2, data.partner1Name, data.partner2Name, data.region, data.partner2Region, currency.symbol);
+                      const dataUrl = exportHouseholdTakeHomePdf(result, result2, data.partner1Name, data.partner2Name, data.region, data.partner2Region, currency.symbol, true);
+                      downloadDataUrlMobileSafe(dataUrl, 'household-take-home-pay-report.pdf');
                       addReport({
                         name: `Household Take Home – ${data.partner1Name} & ${data.partner2Name}`,
                         category: 'take-home-pay',
@@ -769,7 +787,8 @@ export function TakeHomePayPage() {
                     });
                   } else {
                     gate(() => {
-                      const dataUrl = exportTakeHomePdf(result, data.region, currency.symbol);
+                      const dataUrl = exportTakeHomePdf(result, data.region, currency.symbol, true);
+                      downloadDataUrlMobileSafe(dataUrl, 'take-home-pay-report.pdf');
                       addReport({
                         name: `Take Home Pay – ${formatCurrency(result.grossAnnual, currency.code)}/yr`,
                         category: 'take-home-pay',
