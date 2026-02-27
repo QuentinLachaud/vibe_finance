@@ -27,6 +27,14 @@ const PRESET_CATEGORIES: { name: string; icon: string }[] = [
 
 const CUSTOM_CATEGORY = '__custom__';
 
+// ── Common emoji palette for quick icon editing ──
+const EMOJI_PALETTE = [
+  '🏠', '🛒', '🚌', '🍽️', '💡', '💊', '🎬', '👕',
+  '🛡️', '📱', '🎓', '👶', '🐶', '🎁', '🧼', '🏦',
+  '💳', '🚗', '✈️', '🏋️', '🎵', '📚', '🍕', '☕',
+  '💻', '🏥', '🎮', '🛍️', '📋', '💰', '🔧', '🌍',
+];
+
 export function ExpensesSection() {
   const { state, dispatch } = useCalculator();
   const { currency } = useCurrency();
@@ -45,6 +53,14 @@ export function ExpensesSection() {
   const [editNameValue, setEditNameValue] = useState('');
   const editNameInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Emoji picker ──
+  const [editingIconId, setEditingIconId] = useState<string | null>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // ── Drag and drop ──
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   // Focus custom input when switching to custom
   useEffect(() => {
     if (addCategory === CUSTOM_CATEGORY) customInputRef.current?.focus();
@@ -54,6 +70,18 @@ export function ExpensesSection() {
   useEffect(() => {
     if (editingNameId) editNameInputRef.current?.focus();
   }, [editingNameId]);
+
+  // Close emoji picker on click outside
+  useEffect(() => {
+    if (!editingIconId) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setEditingIconId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [editingIconId]);
 
   // Already-used category names (to filter dropdown)
   const usedNames = new Set(state.expenses.map((e) => e.name));
@@ -100,6 +128,43 @@ export function ExpensesSection() {
     setEditNameValue('');
   }, [editingNameId, editNameValue, dispatch]);
 
+  const handleEmojiSelect = useCallback((expenseId: string, emoji: string) => {
+    dispatch({
+      type: 'UPDATE_EXPENSE',
+      payload: { id: expenseId, icon: emoji },
+    });
+    setEditingIconId(null);
+  }, [dispatch]);
+
+  // ── Drag handlers ──
+  const handleDragStart = useCallback((index: number) => {
+    setDragIndex(index);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDrop = useCallback((index: number) => {
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const items = [...state.expenses];
+    const [moved] = items.splice(dragIndex, 1);
+    items.splice(index, 0, moved);
+    dispatch({ type: 'REORDER_EXPENSES', payload: items });
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, [dragIndex, state.expenses, dispatch]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, []);
+
   // Determine if an expense was user-added (custom)
   const isCustomExpense = useCallback((name: string) => {
     return !PRESET_CATEGORIES.some((c) => c.name === name);
@@ -110,9 +175,49 @@ export function ExpensesSection() {
       <h3 className="expenses-title">Monthly Expenses</h3>
 
       <div className="expenses-list">
-        {state.expenses.map((expense) => (
-          <div key={expense.id} className="expense-row">
-            <span className="expense-icon">{expense.icon ?? '📋'}</span>
+        {state.expenses.map((expense, index) => (
+          <div
+            key={expense.id}
+            className={`expense-row${dragIndex === index ? ' expense-row--dragging' : ''}${dragOverIndex === index ? ' expense-row--drag-over' : ''}`}
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={() => handleDrop(index)}
+            onDragEnd={handleDragEnd}
+          >
+            {/* Drag handle */}
+            <span className="expense-drag-handle" title="Drag to reorder">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="9" cy="5" r="2" /><circle cx="15" cy="5" r="2" />
+                <circle cx="9" cy="12" r="2" /><circle cx="15" cy="12" r="2" />
+                <circle cx="9" cy="19" r="2" /><circle cx="15" cy="19" r="2" />
+              </svg>
+            </span>
+
+            {/* Tappable emoji icon */}
+            <span className="expense-icon-wrapper">
+              <button
+                className="expense-icon-btn"
+                onClick={() => setEditingIconId(editingIconId === expense.id ? null : expense.id)}
+                aria-label="Change icon"
+                title="Tap to change icon"
+              >
+                {expense.icon ?? '📋'}
+              </button>
+              {editingIconId === expense.id && (
+                <div ref={emojiPickerRef} className="expense-emoji-picker">
+                  {EMOJI_PALETTE.map((emoji) => (
+                    <button
+                      key={emoji}
+                      className={`expense-emoji-option${emoji === expense.icon ? ' expense-emoji-option--active' : ''}`}
+                      onClick={() => handleEmojiSelect(expense.id, emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>
 
             {/* Editable name */}
             {editingNameId === expense.id ? (

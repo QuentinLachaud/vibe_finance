@@ -213,7 +213,11 @@ export function LandingPage() {
           </button>
           <button
             className="landing-cta-secondary"
-            onClick={() => navigate('/calculator')}
+            onClick={() =>
+              document
+                .getElementById('landing-tools-grid')
+                ?.scrollIntoView({ behavior: 'smooth' })
+            }
           >
             Try the tools now
           </button>
@@ -237,7 +241,7 @@ export function LandingPage() {
       </section>
 
       {/* ── Features grid ── */}
-      <section className="landing-features">
+      <section id="landing-tools-grid" className="landing-features">
         <h2 className="landing-section-title">What you can do here</h2>
         <p className="landing-section-subtitle">
           Pick a tool based on the question you need to answer right now.

@@ -23,6 +23,7 @@ type Action =
   | { type: 'ADD_EXPENSE'; payload: { name: string; amount: number; icon?: string } }
   | { type: 'REMOVE_EXPENSE'; payload: string }
   | { type: 'UPDATE_EXPENSE'; payload: { id: string; name?: string; amount?: number; icon?: string } }
+  | { type: 'REORDER_EXPENSES'; payload: Expense[] }
   | { type: 'LOAD_STATE'; payload: CalculatorState };
 
 function reducer(state: CalculatorState, action: Action): CalculatorState {
@@ -56,6 +57,8 @@ function reducer(state: CalculatorState, action: Action): CalculatorState {
           e.id === action.payload.id ? { ...e, ...action.payload } : e,
         ),
       };
+    case 'REORDER_EXPENSES':
+      return { ...state, expenses: action.payload };
     case 'LOAD_STATE':
       return action.payload;
     default:
@@ -72,7 +75,7 @@ const defaultExpenses: Expense[] = [
 ];
 
 const initialState: CalculatorState = {
-  income: 4500,
+  income: 2500,
   incomeFrequency: 'monthly',
   expenses: defaultExpenses,
 };
