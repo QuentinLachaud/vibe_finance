@@ -212,6 +212,7 @@ export function SettingsPage() {
                 step={1}
                 value={simulationYears}
                 onChange={(e) => setSimulationYears(Number(e.target.value || 15))}
+                onFocus={(e) => e.target.select()}
               />
               <span className="settings-suffix">years</span>
               <button className="settings-btn settings-btn--primary" onClick={saveSimulationYears}>

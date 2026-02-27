@@ -213,6 +213,7 @@ export function ExpensesSection() {
                 const v = Number(e.target.value.replace(/,/g, ''));
                 if (!isNaN(v)) setAddAmount(v);
               }}
+              onFocus={(e) => e.target.select()}
             />
           </div>
 

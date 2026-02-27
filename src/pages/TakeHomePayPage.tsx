@@ -297,6 +297,7 @@ function PartnerInputFields({
               const v = Number(e.target.value.replace(/,/g, ''));
               if (!isNaN(v)) onSalaryChange(v);
             }}
+            onFocus={(e) => e.target.select()}
             placeholder="35,000"
           />
           <div className="thp-period-toggle">
@@ -339,6 +340,7 @@ function PartnerInputFields({
                     const v = Number(e.target.value);
                     if (!isNaN(v) && v >= 0 && v <= 100) onSacrificePctChange(v);
                   }}
+                  onFocus={(e) => e.target.select()}
                   placeholder="5"
                 />
                 <span className="thp-sacrifice-unit">%</span>
@@ -358,6 +360,7 @@ function PartnerInputFields({
                     const v = Number(e.target.value.replace(/,/g, ''));
                     if (!isNaN(v)) onSacrificeFixedChange(v);
                   }}
+                  onFocus={(e) => e.target.select()}
                   placeholder="0"
                 />
               </div>

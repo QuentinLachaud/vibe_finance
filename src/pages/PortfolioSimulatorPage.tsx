@@ -76,6 +76,8 @@ function CurrencyInput({
     }
   };
 
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
+
   return (
     <div className="ps-currency-input">
       <span className="ps-currency-prefix">{symbol}</span>
@@ -84,6 +86,7 @@ function CurrencyInput({
         inputMode="numeric"
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         aria-label={ariaLabel}
       />
@@ -123,6 +126,8 @@ function NumericInput({
     onChange(parsed);
   };
 
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
+
   return (
     <div className="ps-numeric-input">
       <input
@@ -130,6 +135,7 @@ function NumericInput({
         inputMode="decimal"
         value={raw}
         onChange={(e) => setRaw(e.target.value)}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         aria-label={ariaLabel}
       />

@@ -422,6 +422,7 @@ function AssetForm({
             className={`nw-input nw-input--value${debt ? ' nw-input--debt' : ''}`}
             value={value}
             onChange={(e) => setValue(e.target.value)}
+            onFocus={(e) => e.target.select()}
             placeholder="0"
             inputMode="numeric"
           />
@@ -1025,6 +1026,29 @@ export function NetWorthPage() {
   const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
   const [historyAssetId, setHistoryAssetId] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(['__all__'])); // sentinel to default-collapse all
+  // When __all__ sentinel is present, all groups start collapsed; once user interacts, remove it
+  const isGroupCollapsed = useCallback((groupName: string) => {
+    return collapsedGroups.has('__all__') || collapsedGroups.has(groupName);
+  }, [collapsedGroups]);
+  const toggleGroup = useCallback((groupName: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      // First interaction removes the __all__ sentinel and expands only this group
+      if (next.has('__all__')) {
+        next.delete('__all__');
+        // Collapse all known groups except the one clicked
+        for (const [gn] of sortedGroupsRef.current) {
+          if (gn !== groupName) next.add(gn);
+        }
+        return next;
+      }
+      if (next.has(groupName)) next.delete(groupName); else next.add(groupName);
+      return next;
+    });
+  }, []);
+  // Keep a ref so toggle can reference current groups without stale closure
+  const sortedGroupsRef = useRef<[string, Asset[]][]>([]);
 
   // Report state
   const [showReportPicker, setShowReportPicker] = useState(false);
@@ -1157,6 +1181,9 @@ export function NetWorthPage() {
     const sorted = [...assets].sort((a, b) => Math.abs(latestValue(b)) - Math.abs(latestValue(a)));
     return [['All Items', sorted]] as [string, Asset[]][];
   }, [assets, sortMode]);
+
+  // Keep ref in sync for toggle closure
+  sortedGroupsRef.current = sortedGroups;
 
   return (
     <div className="page-container">
@@ -1333,15 +1360,28 @@ export function NetWorthPage() {
           {/* Sorted/grouped asset list */}
           {sortedGroups.map(([groupName, groupAssets]) => {
             const groupTotal = groupAssets.reduce((s, a) => s + latestValue(a), 0);
+            const collapsed = isGroupCollapsed(groupName);
             return (
               <div key={groupName} className="nw-type-group">
-                <div className="nw-type-group-header">
+                <div
+                  className={`nw-type-group-header nw-type-group-header--clickable${collapsed ? '' : ' nw-type-group-header--open'}`}
+                  onClick={() => toggleGroup(groupName)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGroup(groupName); } }}
+                >
+                  <span className="nw-group-chevron" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="5,3 9,7 5,11" />
+                    </svg>
+                  </span>
                   <span className="nw-type-group-name">{groupName}</span>
+                  <span className="nw-type-group-count">{groupAssets.length}</span>
                   <span className={`nw-type-group-total${groupTotal < 0 ? ' nw-type-group-total--neg' : ''}`}>
                     {formatCurrency(groupTotal, currency.code)}
                   </span>
                 </div>
-                {groupAssets.map((asset) => (
+                {!collapsed && groupAssets.map((asset) => (
                   <div key={asset.id}>
                     <div onClick={() => setExpandedAsset(expandedAsset === asset.id ? null : asset.id)} style={{ cursor: asset.snapshots.length >= 1 ? 'pointer' : 'default' }}>
                       <AssetCard
