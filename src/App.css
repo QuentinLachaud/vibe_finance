@@ -106,6 +106,52 @@ body {
   padding: 24px 20px 48px;
 }
 
+/* ── Swipe Navigation Feedback (mobile) ── */
+.swipe-nav-indicator {
+  position: fixed;
+  top: 50%;
+  z-index: 72;
+  pointer-events: none;
+  transition: transform 90ms ease-out, opacity 90ms ease-out;
+  will-change: transform, opacity;
+}
+
+.swipe-nav-indicator--left {
+  right: 14px;
+}
+
+.swipe-nav-indicator--right {
+  left: 14px;
+}
+
+.swipe-nav-indicator__circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(8, 14, 26, 0.66);
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(34, 211, 238, 0.14);
+}
+
+.swipe-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 71;
+  background: rgba(7, 11, 21, 0.38);
+  backdrop-filter: blur(2px);
+}
+
+@media (min-width: 769px) {
+  .swipe-nav-indicator,
+  .swipe-loading-overlay {
+    display: none;
+  }
+}
+
 /* ── Header ── */
 .app-header {
   background-color: var(--bg-secondary);
