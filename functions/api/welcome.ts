@@ -1,5 +1,3 @@
-import { Resend } from 'resend';
-
 interface Env {
   RESEND_API_KEY: string;
 }
@@ -7,6 +5,19 @@ interface Env {
 interface WelcomeBody {
   email: string;
   displayName?: string;
+}
+
+async function sendEmail(apiKey: string, payload: { from: string; to: string; subject: string; html: string }) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Resend API error ${res.status}: ${text}`);
+  }
+  return res.json();
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -29,10 +40,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    const resend = new Resend(env.RESEND_API_KEY);
     const firstName = body.displayName?.split(' ')[0] || 'there';
 
-    const { error } = await resend.emails.send({
+    await sendEmail(env.RESEND_API_KEY, {
       from: 'TakeHomeCalc <onboarding@resend.dev>',
       to: body.email,
       subject: `Welcome to TakeHomeCalc! 🎉`,
@@ -78,14 +88,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         </div>
       `,
     });
-
-    if (error) {
-      console.error('Resend welcome error:', error);
-      return new Response(JSON.stringify({ error: 'Failed to send welcome email' }), {
-        status: 500,
-        headers,
-      });
-    }
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers });
   } catch (err) {
