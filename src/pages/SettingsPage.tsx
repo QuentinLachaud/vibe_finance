@@ -6,6 +6,7 @@ import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
 import { useAuth } from '../state/AuthContext';
 import { db } from '../config/firebase';
+import { ContactModal } from '../components/ContactModal';
 import type { CurrencyCode } from '../types';
 import type { ThemeMode } from '../types';
 
@@ -33,6 +34,7 @@ export function SettingsPage() {
   const [simulationYears, setSimulationYears] = useState<number>(getSavedSimulationYears);
   const [status, setStatus] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
@@ -243,7 +245,21 @@ export function SettingsPage() {
           </div>
           {status && <p className="settings-status">{status}</p>}
         </section>
+
+        <section className="settings-card">
+          <h2 className="settings-card-title">Support</h2>
+          <p className="settings-note" style={{ marginBottom: 12 }}>Got feedback or found a bug? Let us know.</p>
+          <button
+            className="settings-btn settings-btn--primary"
+            onClick={() => setShowContact(true)}
+          >
+            Contact the developer
+          </button>
+        </section>
       </div>
+
+      {/* Contact modal */}
+      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
 
       {/* Delete account confirmation overlay */}
       {showDeleteConfirm && (
