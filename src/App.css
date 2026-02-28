@@ -4399,6 +4399,16 @@ body {
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+  position: relative;
+  min-width: 260px;
+}
+
+.nw-total-toprow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .nw-total-label {
@@ -4414,6 +4424,57 @@ body {
   color: var(--accent-primary);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
+}
+
+.nw-privacy-toggle {
+  border: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.nw-privacy-toggle:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text-primary);
+}
+
+.nw-privacy-toggle--active {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.nw-total-card--private {
+  cursor: pointer;
+  user-select: none;
+}
+
+.nw-total-card--private:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.nw-total-value--masked {
+  letter-spacing: 0.14em;
+  color: var(--text-secondary);
+}
+
+.nw-total-peel {
+  position: absolute;
+  inset: auto 0 0 auto;
+  transform: translateY(6px) rotate(-2deg);
+  background: linear-gradient(135deg, var(--bg-card-alt), var(--bg-hover));
+  border: 1px dashed var(--border-color-light);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  pointer-events: none;
 }
 
 /* Chart card */
@@ -7299,6 +7360,12 @@ a.header-logo {
 
 /* ── Net Worth mobile layout ── */
 @media (max-width: 768px) {
+  .nw-total-card {
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+  }
+
   /* Asset card: stack layout for readability */
   .nw-asset-card {
     flex-wrap: wrap;

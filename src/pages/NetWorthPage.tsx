@@ -1054,6 +1054,8 @@ export function NetWorthPage() {
   const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
   const [historyAssetId, setHistoryAssetId] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
+  const [privacyMode, setPrivacyMode] = usePersistedState<boolean>('vf-nw-privacy-mode', true);
+  const [netWorthRevealed, setNetWorthRevealed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(['__all__'])); // sentinel to default-collapse all
   // When __all__ sentinel is present, all groups start collapsed; once user interacts, remove it
   const isGroupCollapsed = useCallback((groupName: string) => {
@@ -1126,6 +1128,15 @@ export function NetWorthPage() {
   }, [assets, currency.code, addReport]);
 
   const totalNetWorth = useMemo(() => assets.reduce((sum, a) => sum + latestValue(a), 0), [assets]);
+  const showNetWorthValue = !privacyMode || netWorthRevealed;
+
+  useEffect(() => {
+    if (!privacyMode) {
+      setNetWorthRevealed(true);
+      return;
+    }
+    setNetWorthRevealed(false);
+  }, [privacyMode]);
 
   const handleSave = useCallback((asset: Asset) => {
     updateData((prev) => {
@@ -1224,11 +1235,44 @@ export function NetWorthPage() {
             <h1 className="ps-page-title">Net Worth</h1>
             <p className="nw-subtitle">Track your assets and watch your wealth grow over time.</p>
           </div>
-          <div className="nw-total-card">
-            <span className="nw-total-label">Total Net Worth</span>
-            <span className={`nw-total-value${totalNetWorth < 0 ? ' nw-total-value--neg' : ''}`}>
-              {formatCurrency(totalNetWorth, currency.code)}
+          <div
+            className={`nw-total-card${privacyMode ? ' nw-total-card--private' : ''}${showNetWorthValue ? ' nw-total-card--revealed' : ''}`}
+            onClick={() => {
+              if (!privacyMode) return;
+              setNetWorthRevealed((prev) => !prev);
+            }}
+            onKeyDown={(e) => {
+              if (!privacyMode) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setNetWorthRevealed((prev) => !prev);
+              }
+            }}
+            role={privacyMode ? 'button' : undefined}
+            tabIndex={privacyMode ? 0 : -1}
+            aria-label={privacyMode ? (showNetWorthValue ? 'Hide net worth amount' : 'Reveal net worth amount') : undefined}
+          >
+            <div className="nw-total-toprow">
+              <span className="nw-total-label">Total Net Worth</span>
+              <button
+                type="button"
+                className={`nw-privacy-toggle${privacyMode ? ' nw-privacy-toggle--active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPrivacyMode((prev) => !prev);
+                }}
+                aria-pressed={privacyMode}
+                title="Toggle privacy mode"
+              >
+                Privacy {privacyMode ? 'On' : 'Off'}
+              </button>
+            </div>
+            <span className={`nw-total-value${totalNetWorth < 0 ? ' nw-total-value--neg' : ''}${showNetWorthValue ? '' : ' nw-total-value--masked'}`}>
+              {showNetWorthValue ? formatCurrency(totalNetWorth, currency.code) : '••••••••'}
             </span>
+            {privacyMode && !showNetWorthValue && (
+              <span className="nw-total-peel">Reveal net worth</span>
+            )}
           </div>
         </div>
 
