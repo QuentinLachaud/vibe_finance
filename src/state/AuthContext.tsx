@@ -12,6 +12,20 @@ import {
 import { auth, firebaseEnabled } from '../config/firebase';
 import { syncUserProfile } from '../services/userDataService';
 
+// ── Welcome email helper ──
+
+async function sendWelcomeEmail(email: string, displayName?: string | null) {
+  try {
+    await fetch('/api/welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, displayName: displayName || undefined }),
+    });
+  } catch (e) {
+    console.warn('[auth] welcome email failed:', e);
+  }
+}
+
 // ── Types ──
 
 interface AuthResult {
@@ -77,7 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider.addScope('profile');
 
       const result = await signInWithPopup(auth, provider);
-      void result; // consumed by onAuthStateChanged
+      // Send welcome email for brand-new Google users
+      const isNewUser = result.user.metadata.creationTime === result.user.metadata.lastSignInTime;
+      if (isNewUser && result.user.email) {
+        sendWelcomeEmail(result.user.email, result.user.displayName);
+      }
       return { ok: true };
     } catch (error: unknown) {
 
@@ -113,6 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
       if (displayName) {
         await updateProfile(newUser, { displayName });
+      }
+      // Send welcome email for new email sign-ups
+      if (newUser.email) {
+        sendWelcomeEmail(newUser.email, displayName || newUser.displayName);
       }
       return { ok: true };
     } catch (error: unknown) {
