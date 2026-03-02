@@ -483,13 +483,20 @@ function BreakdownContent({
 //  Component
 // ══════════════════════════════════════════════
 
-export function TakeHomePayPage() {
+export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = {}) {
   const { currency } = useCurrency();
   const navigate = useNavigate();
   const { dispatch } = useCalculator();
 
   const [rawData, setData] = usePersistedState<TakeHomePayData>('vf-take-home-pay', THP_DEFAULTS);
   const data = useMemo(() => ({ ...THP_DEFAULTS, ...rawData }), [rawData]);
+
+  // Pre-fill salary for SEO salary landing pages
+  useEffect(() => {
+    if (initialSalary !== undefined) {
+      setData((prev) => ({ ...THP_DEFAULTS, ...prev, salary: initialSalary, period: 'annual' }));
+    }
+  }, [initialSalary, setData]);
 
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [activePartner, setActivePartner] = useState<1 | 2>(1);
