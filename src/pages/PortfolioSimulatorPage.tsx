@@ -494,7 +494,10 @@ function CashFlowForm({ initial, currencySymbol, savedLabels, onSave, onCancel, 
 
 // ── Main Page ──
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function PortfolioSimulatorPage() {
+  useDocumentTitle('Portfolio Simulator | TakeHomeCalc');
   const { currency } = useCurrency();
   const { user } = useAuth();
   const navigate = useNavigate();

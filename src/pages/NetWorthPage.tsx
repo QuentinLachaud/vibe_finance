@@ -1015,7 +1015,10 @@ function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
 
 // ── Main Page ──
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function NetWorthPage() {
+  useDocumentTitle('Net Worth Tracker | TakeHomeCalc');
   const { currency } = useCurrency();
   const { user } = useAuth();
   const { addReport } = useSavedReports();

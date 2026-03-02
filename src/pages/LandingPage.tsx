@@ -143,7 +143,10 @@ function FeatureCard({
 
 // ── Landing Page ──
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function LandingPage() {
+  useDocumentTitle('TakeHomeCalc - Your Personal Finance Dashboard');
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);

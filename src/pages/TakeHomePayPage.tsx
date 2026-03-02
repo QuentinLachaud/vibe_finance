@@ -483,7 +483,10 @@ function BreakdownContent({
 //  Component
 // ══════════════════════════════════════════════
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function TakeHomePayPage() {
+  useDocumentTitle('Take Home Pay Calculator | TakeHomeCalc');
   const { currency } = useCurrency();
   const navigate = useNavigate();
   const { dispatch } = useCalculator();

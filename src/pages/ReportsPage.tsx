@@ -643,7 +643,10 @@ function downloadDataUrl(dataUrl: string, filename: string) {
 
 // ── Component ──
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function ReportsPage() {
+  useDocumentTitle('Reports | TakeHomeCalc');
   const { currency } = useCurrency();
 
   // Saved PDF reports (Take Home Pay + Savings Calculator)
