@@ -5,6 +5,7 @@ import { LoadingCoin } from '../components/LoadingCoin';
 import { LandingPage } from '../pages/LandingPage';
 import { CalculatorPage } from '../pages/CalculatorPage';
 import { TakeHomePayPage } from '../pages/TakeHomePayPage';
+import { SalaryLandingPage } from '../pages/SalaryLandingPage';
 
 // Lazy-loaded heavy pages — instant tab switch, loading coin while JS loads
 const CompoundInterestPage = lazy(() =>
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: '/calculator', element: <CalculatorPage /> },
       { path: '/compound-interest', element: <Lazy><CompoundInterestPage /></Lazy> },
       { path: '/take-home-pay', element: <TakeHomePayPage /> },
+      { path: '/salary/:salary', element: <SalaryLandingPage /> },
       { path: '/net-worth', element: <Lazy><NetWorthPage /></Lazy> },
       { path: '/retirement', element: <Navigate to="/calculator" replace /> },
       { path: '/portfolio', element: <Lazy><PortfolioSimulatorPage /></Lazy> },
