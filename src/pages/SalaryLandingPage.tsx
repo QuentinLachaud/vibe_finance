@@ -15,19 +15,20 @@ function SummaryCard({ label, value, detail }: { label: string; value: string; d
 }
 
 export function SalaryLandingPage() {
-  const { amountSlug } = useParams();
+  const { amountSlug, salary } = useParams<{ amountSlug?: string; salary?: string }>();
   const navigate = useNavigate();
-  const parsedAmount = parseSalarySlug(amountSlug);
+  const parsedAmount = parseSalarySlug(amountSlug ?? salary);
   const landing = parsedAmount ? buildSalaryLandingData(parsedAmount) : null;
 
   useEffect(() => {
-    if (!landing || amountSlug === undefined) return;
+    const activeSlug = amountSlug ?? salary;
+    if (!landing || activeSlug === undefined) return;
 
     const canonicalSlug = landing.canonicalPath.split('/').pop();
-    if (canonicalSlug && canonicalSlug !== amountSlug) {
+    if (canonicalSlug && canonicalSlug !== activeSlug) {
       navigate(landing.canonicalPath, { replace: true });
     }
-  }, [amountSlug, landing?.canonicalPath, navigate]);
+  }, [amountSlug, landing?.canonicalPath, navigate, salary]);
 
   useSeoMeta({
     title: landing?.title ?? 'Take Home Pay Calculator | TakeHomeCalc',

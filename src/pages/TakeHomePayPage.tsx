@@ -358,7 +358,7 @@ function BreakdownContent({
 
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
-export function TakeHomePayPage() {
+export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = {}) {
   useDocumentTitle('Take Home Pay Calculator | TakeHomeCalc');
   const { currency } = useCurrency();
   const navigate = useNavigate();
@@ -367,6 +367,13 @@ export function TakeHomePayPage() {
 
   const [rawData, setData] = usePersistedState<TakeHomePayData>('vf-take-home-pay', THP_DEFAULTS);
   const data = useMemo(() => ({ ...THP_DEFAULTS, ...rawData }), [rawData]);
+
+  // Pre-fill salary for SEO salary landing pages
+  useEffect(() => {
+    if (initialSalary !== undefined) {
+      setData((prev) => ({ ...THP_DEFAULTS, ...prev, salary: initialSalary, period: 'annual' }));
+    }
+  }, [initialSalary, setData]);
 
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [activePartner, setActivePartner] = useState<1 | 2>(1);
