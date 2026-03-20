@@ -184,7 +184,10 @@ function loadCIState(): Partial<CIPersistedState> {
 }
 
 // ── Main Page ──
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function CompoundInterestPage() {
+  useDocumentTitle('Compound Interest Calculator | TakeHomeCalc');
   const { currency } = useCurrency();
   const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
 

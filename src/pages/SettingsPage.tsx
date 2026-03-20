@@ -25,7 +25,10 @@ function getSavedSimulationYears(): number {
   return 15;
 }
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function SettingsPage() {
+  useDocumentTitle('Settings | TakeHomeCalc');
   const { theme, setTheme } = useTheme();
   const { currency, setCurrency } = useCurrency();
   const { user, logout } = useAuth();

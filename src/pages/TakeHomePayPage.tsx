@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../state/CurrencyContext';
 import { useCalculator } from '../state/CalculatorContext';
 import { formatCurrency } from '../utils/currency';
@@ -9,6 +9,13 @@ import { useSavedReports } from '../hooks/useSavedReports';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { LoginModal } from '../components/LoginModal';
 import type { CurrencyCode } from '../types';
+import {
+  annualiseSalary,
+  calculateTakeHome,
+  type Region,
+  type SalaryPeriod,
+  type TaxBreakdown,
+} from '../utils/takeHomeTax';
 
 function downloadDataUrlMobileSafe(dataUrl: string, filename: string) {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -25,140 +32,6 @@ function downloadDataUrlMobileSafe(dataUrl: string, filename: string) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-}
-
-// ══════════════════════════════════════════════
-//  UK Tax/NI calculation engine (2025-26 rates)
-// ══════════════════════════════════════════════
-
-type Region = 'england' | 'scotland';
-type SalaryPeriod = 'annual' | 'monthly' | 'weekly';
-
-interface TaxBreakdown {
-  grossAnnual: number;
-  pensionSacrifice: number;
-  taxableIncome: number; // after sacrifice & personal allowance
-  personalAllowance: number;
-  incomeTax: number;
-  nationalInsurance: number;
-  totalDeductions: number;
-  netAnnual: number;
-  netMonthly: number;
-  netWeekly: number;
-  effectiveRate: number; // %
-  taxBands: { name: string; rate: string; amount: number }[];
-  niBands: { name: string; rate: string; amount: number }[];
-}
-
-// 2025-26 England/Wales/NI tax bands
-const ENGLAND_BANDS = [
-  { name: 'Basic Rate', lo: 0, hi: 37_700, rate: 0.20 },
-  { name: 'Higher Rate', lo: 37_700, hi: 125_140, rate: 0.40 },
-  { name: 'Additional Rate', lo: 125_140, hi: Infinity, rate: 0.45 },
-];
-
-// 2025-26 Scotland bands
-const SCOTLAND_BANDS = [
-  { name: 'Starter Rate', lo: 0, hi: 2_306, rate: 0.19 },
-  { name: 'Basic Rate', lo: 2_306, hi: 13_991, rate: 0.20 },
-  { name: 'Intermediate Rate', lo: 13_991, hi: 31_092, rate: 0.21 },
-  { name: 'Higher Rate', lo: 31_092, hi: 62_430, rate: 0.42 },
-  { name: 'Advanced Rate', lo: 62_430, hi: 125_140, rate: 0.45 },
-  { name: 'Top Rate', lo: 125_140, hi: Infinity, rate: 0.48 },
-];
-
-// National Insurance Class 1 (employee) 2025-26
-const NI_THRESHOLD = 12_570; // Primary Threshold
-const NI_UEL = 50_270; // Upper Earnings Limit
-const NI_RATE_MAIN = 0.08; // between PT and UEL
-const NI_RATE_UPPER = 0.02; // above UEL
-
-const PERSONAL_ALLOWANCE = 12_570;
-const PA_THRESHOLD = 100_000; // starts reducing
-
-function calcPersonalAllowance(grossAnnual: number): number {
-  if (grossAnnual <= PA_THRESHOLD) return PERSONAL_ALLOWANCE;
-  const reduction = Math.floor((grossAnnual - PA_THRESHOLD) / 2);
-  return Math.max(0, PERSONAL_ALLOWANCE - reduction);
-}
-
-function calcIncomeTax(taxableIncome: number, bands: typeof ENGLAND_BANDS): { total: number; breakdown: { name: string; rate: string; amount: number }[] } {
-  let remaining = Math.max(0, taxableIncome);
-  let total = 0;
-  const breakdown: { name: string; rate: string; amount: number }[] = [];
-
-  for (const band of bands) {
-    const bandWidth = band.hi - band.lo;
-    const inBand = Math.min(remaining, bandWidth);
-    if (inBand <= 0) {
-      breakdown.push({ name: band.name, rate: `${(band.rate * 100).toFixed(0)}%`, amount: 0 });
-      continue;
-    }
-    const tax = inBand * band.rate;
-    total += tax;
-    breakdown.push({ name: band.name, rate: `${(band.rate * 100).toFixed(0)}%`, amount: Math.round(tax) });
-    remaining -= inBand;
-  }
-
-  return { total, breakdown };
-}
-
-function calcNI(grossAnnual: number): { total: number; breakdown: { name: string; rate: string; amount: number }[] } {
-  const breakdown: { name: string; rate: string; amount: number }[] = [];
-  let total = 0;
-
-  // Below primary threshold — no NI
-  const abovePT = Math.max(0, grossAnnual - NI_THRESHOLD);
-  const mainBand = Math.min(abovePT, NI_UEL - NI_THRESHOLD);
-  const upperBand = Math.max(0, abovePT - (NI_UEL - NI_THRESHOLD));
-
-  const niMain = mainBand * NI_RATE_MAIN;
-  const niUpper = upperBand * NI_RATE_UPPER;
-  total = niMain + niUpper;
-
-  breakdown.push({ name: `${formatNum(NI_THRESHOLD)}–${formatNum(NI_UEL)}`, rate: '8%', amount: Math.round(niMain) });
-  if (upperBand > 0) {
-    breakdown.push({ name: `Above ${formatNum(NI_UEL)}`, rate: '2%', amount: Math.round(niUpper) });
-  }
-
-  return { total, breakdown };
-}
-
-function formatNum(n: number): string {
-  return `£${n.toLocaleString('en-GB')}`;
-}
-
-function computeTax(gross: number, region: Region, sacrificePct: number, sacrificeFixed: number): TaxBreakdown {
-  // Salary sacrifice reduces gross
-  const sacrificeFromPct = gross * (sacrificePct / 100);
-  const pensionSacrifice = Math.round(sacrificeFromPct + sacrificeFixed);
-  const adjustedGross = Math.max(0, gross - pensionSacrifice);
-
-  const pa = calcPersonalAllowance(adjustedGross);
-  const taxableIncome = Math.max(0, adjustedGross - pa);
-
-  const bands = region === 'scotland' ? SCOTLAND_BANDS : ENGLAND_BANDS;
-  const { total: incomeTax, breakdown: taxBands } = calcIncomeTax(taxableIncome, bands);
-  const { total: ni, breakdown: niBands } = calcNI(adjustedGross);
-
-  const totalDeductions = Math.round(incomeTax + ni);
-  const netAnnual = adjustedGross - totalDeductions;
-
-  return {
-    grossAnnual: gross,
-    pensionSacrifice,
-    taxableIncome: Math.round(taxableIncome),
-    personalAllowance: pa,
-    incomeTax: Math.round(incomeTax),
-    nationalInsurance: Math.round(ni),
-    totalDeductions,
-    netAnnual: Math.round(netAnnual),
-    netMonthly: Math.round(netAnnual / 12),
-    netWeekly: Math.round(netAnnual / 52),
-    effectiveRate: gross > 0 ? Math.round(((incomeTax + ni) / gross) * 1000) / 10 : 0,
-    taxBands,
-    niBands,
-  };
 }
 
 // ══════════════════════════════════════════════
@@ -483,9 +356,13 @@ function BreakdownContent({
 //  Component
 // ══════════════════════════════════════════════
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = {}) {
+  useDocumentTitle('Take Home Pay Calculator | TakeHomeCalc');
   const { currency } = useCurrency();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { dispatch } = useCalculator();
 
   const [rawData, setData] = usePersistedState<TakeHomePayData>('vf-take-home-pay', THP_DEFAULTS);
@@ -501,6 +378,7 @@ export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = 
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [activePartner, setActivePartner] = useState<1 | 2>(1);
   const [breakdownPartner, setBreakdownPartner] = useState<1 | 2>(1);
+  const didApplySearchParams = useRef(false);
   const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
   const { addReport } = useSavedReports();
 
@@ -509,32 +387,56 @@ export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = 
   }, [setData]);
 
   // Convert entered salary to annual
-  const grossAnnual = useMemo(() => {
-    switch (data.period) {
-      case 'monthly': return data.salary * 12;
-      case 'weekly': return data.salary * 52;
-      default: return data.salary;
-    }
-  }, [data.salary, data.period]);
+  useEffect(() => {
+    if (didApplySearchParams.current) return;
+
+    const salaryValue = searchParams.get('salary');
+    if (!salaryValue) return;
+
+    const salary = Number(salaryValue.replace(/,/g, ''));
+    if (!Number.isFinite(salary) || salary <= 0) return;
+
+    const periodParam = searchParams.get('period');
+    const regionParam = searchParams.get('region');
+    const sacrificePctParam = searchParams.get('sacrificePct');
+    const sacrificeFixedParam = searchParams.get('sacrificeFixed');
+
+    const period: SalaryPeriod = periodParam === 'monthly' || periodParam === 'weekly' ? periodParam : 'annual';
+    const region: Region = regionParam === 'scotland' ? 'scotland' : 'england';
+    const sacrificePct = Number(sacrificePctParam ?? 0);
+    const sacrificeFixed = Number(sacrificeFixedParam ?? 0);
+
+    didApplySearchParams.current = true;
+    setData((prev) => ({
+      ...THP_DEFAULTS,
+      ...prev,
+      householdMode: false,
+      salary,
+      period,
+      region,
+      salarySacrifice: sacrificePct > 0 || sacrificeFixed > 0,
+      sacrificePct: Number.isFinite(sacrificePct) ? sacrificePct : 0,
+      sacrificeFixed: Number.isFinite(sacrificeFixed) ? sacrificeFixed : 0,
+      lastModified: new Date().toISOString(),
+    }));
+  }, [searchParams, setData]);
+
+  const grossAnnual = useMemo(() => annualiseSalary(data.salary, data.period), [data.salary, data.period]);
 
   const result = useMemo(
-    () => computeTax(grossAnnual, data.region, data.salarySacrifice ? data.sacrificePct : 0, data.salarySacrifice ? data.sacrificeFixed : 0),
+    () => calculateTakeHome(grossAnnual, data.region, data.salarySacrifice ? data.sacrificePct : 0, data.salarySacrifice ? data.sacrificeFixed : 0),
     [grossAnnual, data.region, data.salarySacrifice, data.sacrificePct, data.sacrificeFixed],
   );
 
   // Partner 2 computations (household mode)
-  const grossAnnual2 = useMemo(() => {
-    if (!data.householdMode) return 0;
-    switch (data.partner2Period) {
-      case 'monthly': return data.partner2Salary * 12;
-      case 'weekly': return data.partner2Salary * 52;
-      default: return data.partner2Salary;
-    }
-  }, [data.householdMode, data.partner2Salary, data.partner2Period]);
+  const grossAnnual2 = useMemo(
+    () => (data.householdMode ? annualiseSalary(data.partner2Salary, data.partner2Period) : 0),
+    [data.householdMode, data.partner2Salary, data.partner2Period],
+  );
 
   const result2 = useMemo(
     () => data.householdMode
-      ? computeTax(grossAnnual2, data.partner2Region, data.partner2SalarySacrifice ? data.partner2SacrificePct : 0, data.partner2SalarySacrifice ? data.partner2SacrificeFixed : 0)
+      ? calculateTakeHome(grossAnnual2, data.partner2Region, data.partner2SalarySacrifice ? data.partner2SacrificePct : 0, data.partner2SalarySacrifice ? data.partner2SacrificeFixed : 0)
       : null,
     [data.householdMode, grossAnnual2, data.partner2Region, data.partner2SalarySacrifice, data.partner2SacrificePct, data.partner2SacrificeFixed],
   );

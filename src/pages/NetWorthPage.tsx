@@ -352,11 +352,7 @@ function AssetForm({
   const [name, setName] = useState(initial?.name || '');
   const [type, setType] = useState(initial?.type || DEFAULT_ASSET_TYPES[0]);
   const [value, setValue] = useState(initial ? String(Math.abs(latestValue(initial))) : '');
-  const [date, setDate] = useState(
-    initial?.snapshots.length
-      ? [...initial.snapshots].sort((a, b) => b.date.localeCompare(a.date))[0].date
-      : todayStr(),
-  );
+  const [date, setDate] = useState(todayStr());
   const { currency } = useCurrency();
   const debt = isDebtType(type);
 
@@ -1015,7 +1011,10 @@ function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
 
 // ── Main Page ──
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function NetWorthPage() {
+  useDocumentTitle('Net Worth Tracker | TakeHomeCalc');
   const { currency } = useCurrency();
   const { user } = useAuth();
   const { addReport } = useSavedReports();
@@ -1267,12 +1266,14 @@ export function NetWorthPage() {
                 Privacy {privacyMode ? 'On' : 'Off'}
               </button>
             </div>
-            <span className={`nw-total-value${totalNetWorth < 0 ? ' nw-total-value--neg' : ''}${showNetWorthValue ? '' : ' nw-total-value--masked'}`}>
-              {showNetWorthValue ? formatCurrency(totalNetWorth, currency.code) : '••••••••'}
-            </span>
-            {privacyMode && !showNetWorthValue && (
-              <span className="nw-total-peel">Reveal net worth</span>
-            )}
+            <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'inherit' }}>
+              <span className={`nw-total-value${totalNetWorth < 0 ? ' nw-total-value--neg' : ''}${showNetWorthValue ? '' : ' nw-total-value--masked'}`}>
+                {showNetWorthValue ? formatCurrency(totalNetWorth, currency.code) : '••••••••'}
+              </span>
+              {privacyMode && !showNetWorthValue && (
+                <span className="nw-total-peel">Reveal net worth</span>
+              )}
+            </div>
           </div>
         </div>
 

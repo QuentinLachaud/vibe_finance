@@ -54,7 +54,10 @@ const CHART_COLORS = [
 
 type ChartView = 'expenses' | 'flow';
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function CalculatorPage() {
+  useDocumentTitle('Savings Calculator | TakeHomeCalc');
   const { state, dispatch } = useCalculator();
   const { currency } = useCurrency();
   const { user } = useAuth();

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 import { LoginModal } from '../components/LoginModal';
+import { buildSalaryPath, POPULAR_SALARY_AMOUNTS } from '../utils/salaryLanding';
 
 // ── SVG icons (thin line, no emojis) ──
 
@@ -143,7 +144,10 @@ function FeatureCard({
 
 // ── Landing Page ──
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export function LandingPage() {
+  useDocumentTitle('TakeHomeCalc - Your Personal Finance Dashboard');
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
@@ -172,6 +176,20 @@ export function LandingPage() {
           <div className="landing-features-grid">
             {FEATURES.map((f, i) => (
               <FeatureCard key={f.path} {...f} index={i} />
+            ))}
+          </div>
+        </section>
+
+        <section className="landing-salary-searches">
+          <div className="landing-salary-searches__header">
+            <h2 className="landing-section-title">Popular salary landing pages</h2>
+            <p className="landing-section-subtitle">Quick links to the salary pages people search for most often.</p>
+          </div>
+          <div className="landing-salary-searches__grid">
+            {POPULAR_SALARY_AMOUNTS.slice(0, 8).map((amount) => (
+              <Link key={amount} className="landing-salary-pill" to={buildSalaryPath(amount)}>
+                {`£${amount.toLocaleString('en-GB')} after tax UK`}
+              </Link>
             ))}
           </div>
         </section>
@@ -249,6 +267,22 @@ export function LandingPage() {
         <div className="landing-features-grid">
           {FEATURES.map((f, i) => (
             <FeatureCard key={f.path} {...f} index={i} />
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-salary-searches">
+        <div className="landing-salary-searches__header">
+          <h2 className="landing-section-title">Popular UK salary searches</h2>
+          <p className="landing-section-subtitle">
+            These salary pages answer common searches like “50,000 after tax UK” and “60,000 net UK”.
+          </p>
+        </div>
+        <div className="landing-salary-searches__grid">
+          {POPULAR_SALARY_AMOUNTS.map((amount) => (
+            <Link key={amount} className="landing-salary-pill" to={buildSalaryPath(amount)}>
+              {`£${amount.toLocaleString('en-GB')} after tax UK`}
+            </Link>
           ))}
         </div>
       </section>
