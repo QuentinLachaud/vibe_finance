@@ -4,6 +4,7 @@ import { AppLayout } from '../app/AppLayout';
 import { LoadingCoin } from '../components/LoadingCoin';
 import { LandingPage } from '../pages/LandingPage';
 import { CalculatorPage } from '../pages/CalculatorPage';
+import { SalaryLandingPage } from '../pages/SalaryLandingPage';
 import { TakeHomePayPage } from '../pages/TakeHomePayPage';
 
 // Lazy-loaded heavy pages — instant tab switch, loading coin while JS loads
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { path: '/', element: <LandingPage /> },
+      { path: '/salary/:amountSlug', element: <SalaryLandingPage /> },
       { path: '/calculator', element: <CalculatorPage /> },
       { path: '/compound-interest', element: <Lazy><CompoundInterestPage /></Lazy> },
       { path: '/take-home-pay', element: <TakeHomePayPage /> },
