@@ -6060,6 +6060,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .thp-currency {
@@ -6069,7 +6070,8 @@ body {
 }
 
 .thp-salary-input {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: 10px;
