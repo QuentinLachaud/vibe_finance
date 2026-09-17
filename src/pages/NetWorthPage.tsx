@@ -21,6 +21,8 @@ import { TrashIcon } from '../components/Icons';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { LoadingCoin } from '../components/LoadingCoin';
 import { exportNetWorthPdf } from '../utils/exportPdf';
+import { downloadDataUrlMobileSafe } from '../utils/downloadFile';
+import { signedTypeBreakdown, splitNetWorthItems } from '../utils/netWorthOrdering';
 import { useSavedReports } from '../hooks/useSavedReports';
 import type { CurrencyCode } from '../types';
 
@@ -704,17 +706,17 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
   const [mode, setMode] = useState<DonutMode>('type');
   const [activeIdx, setActiveIdx] = useState<number | undefined>(undefined);
 
-  // Type-based data
+  // Type-based data — signed so liabilities reduce the displayed breakdown total.
   const typeData = useMemo(() => {
-    const map = new Map<string, { name: string; value: number; items: { name: string; value: number }[] }>();
-    for (const a of assets) {
-      const v = latestValue(a);
-      if (!map.has(a.type)) map.set(a.type, { name: a.type, value: 0, items: [] });
-      const entry = map.get(a.type)!;
-      entry.value += Math.abs(v);
-      entry.items.push({ name: a.name, value: v });
-    }
-    return Array.from(map.values()).filter(d => d.value > 0);
+    return signedTypeBreakdown(assets.map((a) => ({
+      name: a.name,
+      type: a.type,
+      value: latestValue(a),
+    }))).map((group) => ({
+      name: group.type,
+      value: group.value,
+      items: group.items.map((item) => ({ name: item.name, value: item.value })),
+    }));
   }, [assets]);
 
   const typeColors = useMemo(() => typeData.map((d, i) => colorForType(d.name, i)), [typeData]);
@@ -732,7 +734,7 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
     return {
       slices: [
         { name: 'Assets', value: assetsTotal, items: assetItems },
-        ...(debtsTotal > 0 ? [{ name: 'Liabilities', value: debtsTotal, items: debtItems }] : []),
+        ...(debtsTotal > 0 ? [{ name: 'Liabilities', value: -debtsTotal, items: debtItems }] : []),
       ],
       debtPct: assetsTotal + debtsTotal > 0 ? (debtsTotal / (assetsTotal + debtsTotal)) * 100 : 0,
     };
@@ -744,8 +746,9 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
   const activeSlice = activeIdx != null ? chartData[activeIdx] : null;
   const total = chartData.reduce((s, d) => s + d.value, 0);
 
-  // Strip `items` for Recharts (it only wants { name, value })
-  const pieData = useMemo(() => chartData.map(({ name, value }) => ({ name, value })), [chartData]);
+  // Recharts needs non-negative geometry, while labels/totals remain signed.
+  const pieData = useMemo(() => chartData.map(({ name, value }) => ({ name, value: Math.abs(value) })), [chartData]);
+  const pieTotal = pieData.reduce((sum, item) => sum + item.value, 0);
 
   return (
     <div className="nw-donut-view">
@@ -786,7 +789,7 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
             {activeSlice ? (
               <>
                 <span className="nw-donut-center-value" style={{ color: chartColors[activeIdx!] }}>
-                  {total > 0 ? `${((activeSlice.value / total) * 100).toFixed(0)}%` : '—'}
+                  {pieTotal > 0 ? `${((Math.abs(activeSlice.value) / pieTotal) * 100).toFixed(0)}%` : '—'}
                 </span>
                 <span className="nw-donut-center-name">{activeSlice.name}</span>
               </>
@@ -858,22 +861,6 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function downloadDataUrlMobileSafe(dataUrl: string, filename: string) {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-  if (isIOS) {
-    window.open(dataUrl, '_blank', 'noopener');
-    return;
-  }
-
-  const a = document.createElement('a');
-  a.href = dataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
 
 type NWReportFormat = 'html' | 'csv' | 'pdf' | 'pdf-native';
 
@@ -897,11 +884,11 @@ function generateNWCSV(assets: Asset[], code: CurrencyCode): string {
 
   // Asset details
   lines.push('Assets & Liabilities');
-  lines.push('Name,Type,Latest Value,# Snapshots,Last Updated');
+  lines.push('Name,Type,Latest Value,Last Updated');
   for (const a of assets) {
     const latest = latestValue(a);
     const lastSnap = a.snapshots.length ? [...a.snapshots].sort((x, y) => x.date.localeCompare(y.date)).pop()!.date : '';
-    lines.push(`"${a.name}",${a.type},${latest},${a.snapshots.length},${lastSnap}`);
+    lines.push(`"${a.name}",${a.type},${latest},${lastSnap}`);
   }
   lines.push('');
 
@@ -921,93 +908,80 @@ function generateNWCSV(assets: Asset[], code: CurrencyCode): string {
 
 function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
   const fmt = (v: number) => formatCurrency(v, code);
+  const esc = (value: string) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
   const now = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
-
-  const totalAssets = assets.filter(a => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
-  const totalDebts = assets.filter(a => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
+  const totalAssets = assets.filter((a) => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
+  const totalDebts = assets.filter((a) => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
   const netWorth = totalAssets - totalDebts;
+  const ordered = splitNetWorthItems(assets.map((a) => ({ ...a, value: latestValue(a) })));
 
-  // Group by type
-  const byType = new Map<string, Asset[]>();
-  for (const a of assets) {
-    if (!byType.has(a.type)) byType.set(a.type, []);
-    byType.get(a.type)!.push(a);
-  }
+  const rows = (items: Array<Asset & { value: number }>, liability = false) => items.map((a) => `
+    <tr>
+      <td><strong>${esc(a.name)}</strong></td>
+      <td>${esc(a.type)}</td>
+      <td class="num">${liability ? fmt(Math.abs(a.value)) : fmt(a.value)}</td>
+    </tr>`).join('');
 
-  const groupRows = Array.from(byType.entries()).map(([type, group]) => {
-    const gTotal = group.reduce((s, a) => s + latestValue(a), 0);
-    const assetRows = group.map(a => `
-      <tr>
-        <td>${a.emoji} ${a.name}</td>
-        <td class="num">${fmt(latestValue(a))}</td>
-        <td class="num">${a.snapshots.length}</td>
-      </tr>`).join('');
-    return `
-      <tr class="group-header"><td colspan="3">${type} — ${fmt(gTotal)}</td></tr>
-      ${assetRows}`;
-  }).join('');
+  const section = (title: string, items: Array<Asset & { value: number }>, liability = false) => `
+    <section>
+      <div class="section-title"><h2>${title}</h2><span>${items.length} item${items.length === 1 ? '' : 's'}</span></div>
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th class="num">Value</th></tr></thead>
+        <tbody>${rows(items, liability) || '<tr><td colspan="3" class="empty">None recorded</td></tr>'}</tbody>
+      </table>
+    </section>`;
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>Net Worth Report</title>
 <style>
-  @page { size: A4; margin: 20mm; }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0b1120; color: #e2e8f0; line-height: 1.6; padding: 40px; }
-  .report-header { text-align: center; margin-bottom: 32px; }
-  .brand { font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #d4a843; margin-bottom: 4px; }
-  h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
-  .date { font-size: 12px; color: #94a3b8; }
-  .kpi-row { display: flex; gap: 16px; justify-content: center; margin: 24px 0; flex-wrap: wrap; }
-  .kpi { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px 24px; text-align: center; min-width: 140px; }
-  .kpi-value { font-size: 22px; font-weight: 700; display: block; }
-  .kpi-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; display: block; }
-  .section { margin-top: 32px; }
-  .section-badge { display: inline-block; background: rgba(212,168,67,0.15); color: #d4a843; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-  th { text-align: left; font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-  td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  @page { size: A4; margin: 18mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #151515; background: #fff; line-height: 1.4; }
+  .report { max-width: 820px; margin: 0 auto; padding: 36px; }
+  .eyebrow { color: #6b7280; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  h1 { margin: 6px 0 2px; font-size: 28px; letter-spacing: -.02em; }
+  .date { color: #6b7280; font-size: 13px; }
+  .hero { margin: 28px 0 18px; padding: 22px 24px; border: 1px solid #dfe3e8; border-radius: 12px; background: #fff; }
+  .hero-label { color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .hero-value { margin-top: 5px; font-size: 38px; font-weight: 750; letter-spacing: -.035em; color: #111827; }
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+  .summary-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
+  .summary-label { color: #6b7280; font-size: 12px; }
+  .summary-value { margin-top: 4px; font-size: 20px; font-weight: 700; }
+  section { margin: 24px 0; page-break-inside: avoid; }
+  .section-title { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #111827; padding-bottom: 7px; margin-bottom: 8px; }
+  .section-title h2 { margin: 0; font-size: 17px; }
+  .section-title span { color: #6b7280; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { padding: 9px 6px; border-bottom: 1px solid #eceff2; text-align: left; font-size: 12px; overflow-wrap: anywhere; }
+  th { color: #6b7280; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+  th:nth-child(1), td:nth-child(1) { width: 44%; }
+  th:nth-child(2), td:nth-child(2) { width: 32%; }
   .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .group-header td { font-weight: 700; font-size: 14px; color: #d4a843; padding-top: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-  .neg { color: #ef4444; }
-  .pos { color: #10b981; }
-  .report-footer { text-align: center; margin-top: 40px; font-size: 11px; color: #64748b; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; }
-  @media print { body { background: white; color: #1e293b; } .kpi { border-color: #e2e8f0; } th { color: #64748b; border-color: #e2e8f0; } td { border-color: #f1f5f9; } .group-header td { color: #92400e; border-color: #e2e8f0; } .report-footer { color: #94a3b8; border-color: #e2e8f0; } }
-</style></head>
-<body>
-  <div class="report-header">
-    <div class="brand">TakeHomeCalc</div>
+  .empty { color: #9ca3af; text-align: center; padding: 18px; }
+  .footer { margin-top: 34px; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 10px; }
+  @media print { .report { padding: 0; } }
+</style></head><body>
+  <main class="report">
+    <div class="eyebrow">TakeHomeCalc</div>
     <h1>Net Worth Report</h1>
-    <div class="date">Generated ${now}</div>
-  </div>
-
-  <div class="kpi-row">
-    <div class="kpi">
-      <span class="kpi-value pos">${fmt(totalAssets)}</span>
-      <span class="kpi-label">Total Assets</span>
+    <div class="date">${now}</div>
+    <div class="hero"><div class="hero-label">Net Worth</div><div class="hero-value">${fmt(netWorth)}</div></div>
+    <div class="summary">
+      <div class="summary-card"><div class="summary-label">Assets</div><div class="summary-value">${fmt(totalAssets)}</div></div>
+      <div class="summary-card"><div class="summary-label">Liabilities</div><div class="summary-value">${fmt(totalDebts)}</div></div>
     </div>
-    <div class="kpi">
-      <span class="kpi-value neg">${fmt(totalDebts)}</span>
-      <span class="kpi-label">Total Debts</span>
-    </div>
-    <div class="kpi">
-      <span class="kpi-value" style="color:${netWorth >= 0 ? '#22d3ee' : '#ef4444'}">${fmt(netWorth)}</span>
-      <span class="kpi-label">Net Worth</span>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-badge">Breakdown</div>
-    <table>
-      <thead><tr><th>Asset / Liability</th><th class="num">Value</th><th class="num">Snapshots</th></tr></thead>
-      <tbody>${groupRows}</tbody>
-    </table>
-  </div>
-
-  <div class="report-footer">
-    TakeHomeCalc &middot; Net Worth Report &middot; ${assets.length} item${assets.length !== 1 ? 's' : ''}
-  </div>
+    ${section('Assets', ordered.assets)}
+    ${section('Liabilities', ordered.liabilities, true)}
+    <div class="footer">TakeHomeCalc · Net Worth Report · Generated ${now}</div>
+  </main>
 </body></html>`;
 }
+
 
 // ── Main Page ──
 

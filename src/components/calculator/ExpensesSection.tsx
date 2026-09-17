@@ -165,10 +165,6 @@ export function ExpensesSection() {
     setDragOverIndex(null);
   }, []);
 
-  // Determine if an expense was user-added (custom)
-  const isCustomExpense = useCallback((name: string) => {
-    return !PRESET_CATEGORIES.some((c) => c.name === name);
-  }, []);
 
   return (
     <div className="expenses-section">
@@ -239,9 +235,6 @@ export function ExpensesSection() {
                 title="Click to rename"
               >
                 {expense.name}
-                {isCustomExpense(expense.name) && (
-                  <span className="expense-custom-badge">custom</span>
-                )}
               </span>
             )}
 

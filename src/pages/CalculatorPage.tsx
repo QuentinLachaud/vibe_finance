@@ -11,6 +11,7 @@ import {
   savingsRate,
 } from '../utils/calculations';
 import { exportSavingsCalcPdf } from '../utils/exportPdf';
+import { downloadDataUrlMobileSafe } from '../utils/downloadFile';
 import { useSavedReports } from '../hooks/useSavedReports';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -24,22 +25,6 @@ import { loadBudgets, saveBudget, removeBudget } from '../services/userDataServi
 import type { SavedBudget } from '../types';
 import { generateId } from '../utils/ids';
 
-function downloadDataUrlMobileSafe(dataUrl: string, filename: string) {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-  if (isIOS) {
-    window.open(dataUrl, '_blank', 'noopener');
-    return;
-  }
-
-  const a = document.createElement('a');
-  a.href = dataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
 
 const CHART_COLORS = [
   '#3b82f6', // Housing – blue

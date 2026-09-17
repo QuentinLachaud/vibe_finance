@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { splitNetWorthItems } from './netWorthOrdering';
 
 interface TaxBreakdownForPdf {
   grossAnnual: number;
@@ -768,33 +769,6 @@ interface NetWorthPdfData {
   netWorth: number;
 }
 
-/** Colour per asset type — same as in the app */
-const NW_TYPE_COLORS: Record<string, readonly [number, number, number]> = {
-  Property:          [8, 145, 178],   // cyan-600
-  'Cash & Savings':  [5, 150, 105],   // emerald-600
-  Investments:       [124, 58, 237],  // violet-600
-  Pension:           [217, 119, 6],   // amber-600
-  Vehicle:           [37, 99, 235],   // blue-600
-  Crypto:            [219, 39, 119],  // pink-600
-  Collectibles:      [220, 38, 38],   // red-600
-  Business:          [8, 145, 178],   // cyan-600
-  Mortgage:          [234, 88, 12],   // orange-600
-  'Student Loan':    [124, 58, 237],  // violet-600
-  'Car Loan':        [79, 70, 229],   // indigo-600
-  'Credit Card':     [220, 38, 38],   // red-600
-  'Personal Loan':   [217, 119, 6],   // amber-600
-  'Other Debt':      [113, 113, 122], // zinc-500
-};
-
-const FALLBACK_COLORS: readonly (readonly [number, number, number])[] = [
-  [8, 145, 178], [124, 58, 237], [5, 150, 105], [217, 119, 6],
-  [37, 99, 235], [219, 39, 119], [220, 38, 38], [79, 70, 229],
-];
-
-function nwColor(type: string, idx: number): readonly [number, number, number] {
-  return NW_TYPE_COLORS[type] ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
-}
-
 export function exportNetWorthPdf(
   data: NetWorthPdfData,
   currencySymbol: string,
@@ -803,273 +777,109 @@ export function exportNetWorthPdf(
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const margin = 20;
+  const margin = 18;
   const contentW = pw - margin * 2;
-
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const ordered = splitNetWorthItems(data.assets);
+  let y = 16;
 
-  // ── Brand header ──
-  drawBrandHeader(doc, pw, margin, `Net Worth Snapshot  ·  ${dateStr}`);
+  const startPage = (continuation = false) => {
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, pw, ph, 'F');
+    doc.setTextColor(17, 24, 39);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(continuation ? 12 : 18);
+    doc.text(continuation ? 'Net Worth Report — continued' : 'Net Worth', margin, 16);
+    doc.setDrawColor(209, 213, 219);
+    doc.line(margin, 21, pw - margin, 21);
+    y = 29;
+  };
 
-  let y = 42;
-
-  // ── Hero: Net Worth ──
-  const nwColor_: readonly [number, number, number] = data.netWorth >= 0 ? C.cyan : C.red;
-  doc.setFillColor(...C.cardBg);
-  doc.roundedRect(margin, y, contentW, 28, 3, 3, 'F');
-  doc.setDrawColor(...C.border);
-  doc.roundedRect(margin, y, contentW, 28, 3, 3, 'S');
-
+  startPage(false);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...C.muted);
-  doc.text('TOTAL NET WORTH', margin + 8, y + 8);
+  doc.setFontSize(8.5);
+  doc.setTextColor(107, 114, 128);
+  doc.text(`TakeHomeCalc · ${dateStr}`, margin, y);
+  y += 11;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.setTextColor(nwColor_[0], nwColor_[1], nwColor_[2]);
-  const prefix = data.netWorth < 0 ? '-' : '';
-  doc.text(`${prefix}${fmt(data.netWorth, currencySymbol)}`, margin + 8, y + 22);
+  doc.setFontSize(9);
+  doc.setTextColor(107, 114, 128);
+  doc.text('NET WORTH', margin, y);
+  y += 8;
+  doc.setFontSize(26);
+  doc.setTextColor(17, 24, 39);
+  const netPrefix = data.netWorth < 0 ? '-' : '';
+  doc.text(`${netPrefix}${fmt(data.netWorth, currencySymbol)}`, margin, y);
+  y += 14;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.setTextColor(...C.muted);
-  doc.text(`${data.assets.length} item${data.assets.length !== 1 ? 's' : ''} tracked`, pw - margin - 8, y + 22, { align: 'right' });
+  doc.setTextColor(75, 85, 99);
+  doc.text(`Assets  ${fmt(data.totalAssets, currencySymbol)}`, margin, y);
+  doc.text(`Liabilities  ${fmt(data.totalDebts, currencySymbol)}`, margin + contentW / 2, y);
+  y += 13;
 
-  y += 36;
+  const ensureRows = (rows: number) => {
+    if (y + rows * 7 + 18 <= ph) return;
+    doc.addPage();
+    startPage(true);
+  };
 
-  // ── KPI Row: Assets / Debts / Debt-to-Asset ──
-  const debtToAsset = data.totalAssets > 0 ? Math.round((data.totalDebts / data.totalAssets) * 1000) / 10 : 0;
-  const kpis: { label: string; value: string; color: readonly [number, number, number] }[] = [
-    { label: 'Total Assets', value: fmt(data.totalAssets, currencySymbol), color: C.green },
-    { label: 'Total Debts', value: fmt(data.totalDebts, currencySymbol), color: C.red },
-    { label: 'Debt-to-Asset', value: `${debtToAsset}%`, color: C.body },
-  ];
-
-  const kpiW = (contentW - 10) / 3;
-  kpis.forEach((kpi, i) => {
-    const kx = margin + i * (kpiW + 5);
-    doc.setFillColor(...C.cardBg);
-    doc.roundedRect(kx, y, kpiW, 20, 2, 2, 'F');
-    doc.setDrawColor(...C.border);
-    doc.roundedRect(kx, y, kpiW, 20, 2, 2, 'S');
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(...C.muted);
-    doc.text(kpi.label, kx + kpiW / 2, y + 7, { align: 'center' });
-
+  const drawItems = (title: 'Assets' | 'Liabilities', items: NetWorthAssetForPdf[], liability: boolean) => {
+    ensureRows(Math.min(items.length, 4) + 2);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(...kpi.color);
-    doc.text(kpi.value, kx + kpiW / 2, y + 16, { align: 'center' });
-  });
-
-  y += 28;
-
-  // ── Asset vs Debt visual bar ──
-  const total = data.totalAssets + data.totalDebts;
-  if (total > 0) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...C.title);
-    doc.text('Assets vs Debts', margin, y);
-    y += 5;
-
-    const barH = 8;
-    const assetW = (data.totalAssets / total) * contentW;
-    const debtW = contentW - assetW;
-
-    // Asset bar
-    doc.setFillColor(...C.green);
-    if (assetW > 0) doc.roundedRect(margin, y, Math.max(assetW, 2), barH, 2, 2, 'F');
-    // Debt bar
-    doc.setFillColor(...C.red);
-    if (debtW > 0) doc.roundedRect(margin + assetW, y, Math.max(debtW, 2), barH, 2, 2, 'F');
-
-    // Labels on the bar
-    if (assetW > 30) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
-      doc.setTextColor(255, 255, 255);
-      doc.text(`Assets ${Math.round((data.totalAssets / total) * 100)}%`, margin + 3, y + 5.5);
-    }
-    if (debtW > 30) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
-      doc.setTextColor(255, 255, 255);
-      doc.text(`Debts ${Math.round((data.totalDebts / total) * 100)}%`, margin + assetW + 3, y + 5.5);
-    }
-    y += barH + 8;
-  }
-
-  // ── Allocation breakdown (grouped by type) ──
-  const byType = new Map<string, { items: NetWorthAssetForPdf[]; total: number }>();
-  for (const a of data.assets) {
-    const entry = byType.get(a.type) ?? { items: [], total: 0 };
-    entry.items.push(a);
-    entry.total += a.value;
-    byType.set(a.type, entry);
-  }
-
-  // Separate assets and debts groups
-  const assetGroups = Array.from(byType.entries())
-    .filter(([, g]) => g.total >= 0)
-    .sort((a, b) => b[1].total - a[1].total);
-  const debtGroups = Array.from(byType.entries())
-    .filter(([, g]) => g.total < 0)
-    .sort((a, b) => a[1].total - b[1].total);
-
-  // ── Asset Allocation donut-style colour strip + table ──
-  if (assetGroups.length > 0) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...C.title);
-    doc.text('Asset Allocation', margin, y);
-    y += 5;
-
-    // Colour strip
-    const stripH = 5;
-    let sx = margin;
-    assetGroups.forEach(([type, g], i) => {
-      const w = (g.total / data.totalAssets) * contentW;
-      if (w > 0.5) {
-        const col = nwColor(type, i);
-        doc.setFillColor(...col);
-        doc.rect(sx, y, w, stripH, 'F');
-        sx += w;
-      }
-    });
-    // Round left/right corners
-    doc.setDrawColor(...C.border);
-    doc.roundedRect(margin, y, contentW, stripH, 1.5, 1.5, 'S');
-    y += stripH + 4;
-
-    // Table
-    doc.setFillColor(...C.tableBg);
-    doc.rect(margin, y, contentW, 6, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(...C.muted);
-    doc.text('Type', margin + 10, y + 4);
-    doc.text('Value', margin + contentW * 0.6, y + 4);
-    doc.text('% of Assets', pw - margin - 4, y + 4, { align: 'right' });
+    doc.setTextColor(17, 24, 39);
+    doc.text(title, margin, y);
     y += 6;
 
-    doc.setFontSize(8);
-    assetGroups.forEach(([type, g], i) => {
-      if (i % 2 === 0) {
-        doc.setFillColor(...C.altRowBg);
-        doc.rect(margin, y, contentW, 6.5, 'F');
-      }
-      // Colour dot
-      const col = nwColor(type, i);
-      doc.setFillColor(...col);
-      doc.circle(margin + 5, y + 3.2, 1.5, 'F');
+    doc.setFillColor(247, 248, 250);
+    doc.rect(margin, y, contentW, 7, 'F');
+    doc.setFontSize(7);
+    doc.setTextColor(107, 114, 128);
+    doc.text('Name', margin + 3, y + 4.8);
+    doc.text('Type', margin + contentW * 0.55, y + 4.8);
+    doc.text('Value', pw - margin - 3, y + 4.8, { align: 'right' });
+    y += 7;
 
+    if (items.length === 0) {
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...C.body);
-      doc.text(type, margin + 10, y + 4.5);
-      doc.text(fmt(g.total, currencySymbol), margin + contentW * 0.6, y + 4.5);
-      const pct = data.totalAssets > 0 ? Math.round((g.total / data.totalAssets) * 100) : 0;
-      doc.text(`${pct}%`, pw - margin - 4, y + 4.5, { align: 'right' });
-      y += 6.5;
-    });
-    y += 4;
-  }
-
-  // ── Debts ──
-  if (debtGroups.length > 0) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...C.title);
-    doc.text('Liabilities', margin, y);
-    y += 5;
-
-    doc.setFillColor(...C.tableBg);
-    doc.rect(margin, y, contentW, 6, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(...C.muted);
-    doc.text('Type', margin + 10, y + 4);
-    doc.text('Balance', margin + contentW * 0.6, y + 4);
-    doc.text('% of Debts', pw - margin - 4, y + 4, { align: 'right' });
-    y += 6;
-
-    doc.setFontSize(8);
-    debtGroups.forEach(([type, g], i) => {
-      if (i % 2 === 0) {
-        doc.setFillColor(...C.altRowBg);
-        doc.rect(margin, y, contentW, 6.5, 'F');
-      }
-      const col = nwColor(type, i);
-      doc.setFillColor(...col);
-      doc.circle(margin + 5, y + 3.2, 1.5, 'F');
-
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...C.red);
-      doc.text(type, margin + 10, y + 4.5);
-      doc.text(fmt(Math.abs(g.total), currencySymbol), margin + contentW * 0.6, y + 4.5);
-      const pct = data.totalDebts > 0 ? Math.round((Math.abs(g.total) / data.totalDebts) * 100) : 0;
-      doc.text(`${pct}%`, pw - margin - 4, y + 4.5, { align: 'right' });
-      y += 6.5;
-    });
-    y += 4;
-  }
-
-  // ── Detailed item list (compact, remaining space) ──
-  const remainingSpace = ph - y - 20; // footroom for footer
-  if (remainingSpace > 30 && data.assets.length > 0) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...C.title);
-    doc.text('All Items', margin, y);
-    y += 5;
-
-    doc.setFillColor(...C.tableBg);
-    doc.rect(margin, y, contentW, 6, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(...C.muted);
-    doc.text('Name', margin + 4, y + 4);
-    doc.text('Type', margin + contentW * 0.5, y + 4);
-    doc.text('Value', pw - margin - 4, y + 4, { align: 'right' });
-    y += 6;
-
-    const sortedItems = [...data.assets].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
-    const maxRows = Math.floor((ph - y - 18) / 6);
-    const displayItems = sortedItems.slice(0, maxRows);
-
-    doc.setFontSize(7.5);
-    displayItems.forEach((item, i) => {
-      if (i % 2 === 0) {
-        doc.setFillColor(...C.altRowBg);
-        doc.rect(margin, y, contentW, 6, 'F');
-      }
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...C.body);
-      doc.text(item.name, margin + 4, y + 4.2);
-      doc.setTextColor(...C.muted);
-      doc.text(item.type, margin + contentW * 0.5, y + 4.2);
-      const valColor: readonly [number, number, number] = item.value >= 0 ? C.body : C.red;
-      doc.setTextColor(valColor[0], valColor[1], valColor[2]);
-      const valStr = item.value < 0 ? `-${fmt(item.value, currencySymbol)}` : fmt(item.value, currencySymbol);
-      doc.text(valStr, pw - margin - 4, y + 4.2, { align: 'right' });
-      y += 6;
-    });
-
-    if (sortedItems.length > displayItems.length) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(...C.muted);
-      doc.text(`+ ${sortedItems.length - displayItems.length} more items`, margin + 4, y + 4);
+      doc.setFontSize(8);
+      doc.setTextColor(156, 163, 175);
+      doc.text('None recorded', margin + 3, y + 5);
+      y += 8;
+      return;
     }
-  }
 
-  // ── Footer ──
-  drawFooter(doc, pw, 'Generated by TakeHomeCalc  ·  Net Worth Snapshot  ·  Not financial advice');
+    items.forEach((item, index) => {
+      ensureRows(2);
+      if (index % 2 === 0) {
+        doc.setFillColor(252, 252, 253);
+        doc.rect(margin, y, contentW, 7, 'F');
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(31, 41, 55);
+      doc.text(item.name.slice(0, 42), margin + 3, y + 4.8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(item.type.slice(0, 28), margin + contentW * 0.55, y + 4.8);
+      doc.setTextColor(31, 41, 55);
+      doc.text(fmt(liability ? Math.abs(item.value) : item.value, currencySymbol), pw - margin - 3, y + 4.8, { align: 'right' });
+      y += 7;
+    });
+    y += 9;
+  };
 
-  if (!skipDownload) doc.save(`net-worth-snapshot-${now.toISOString().slice(0, 10)}.pdf`);
+  drawItems('Assets', ordered.assets, false);
+  drawItems('Liabilities', ordered.liabilities, true);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(156, 163, 175);
+  doc.text('Generated by TakeHomeCalc · Not financial advice', pw / 2, ph - 8, { align: 'center' });
+
+  if (!skipDownload) doc.save(`net-worth-report-${now.toISOString().slice(0, 10)}.pdf`);
   return doc.output('datauristring');
 }

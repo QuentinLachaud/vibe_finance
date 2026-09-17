@@ -4,6 +4,7 @@ import { useCurrency } from '../state/CurrencyContext';
 import { useCalculator } from '../state/CalculatorContext';
 import { formatCurrency } from '../utils/currency';
 import { exportTakeHomePdf, exportHouseholdTakeHomePdf } from '../utils/exportPdf';
+import { downloadDataUrlMobileSafe } from '../utils/downloadFile';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useSavedReports } from '../hooks/useSavedReports';
 import { useAuthGate } from '../hooks/useAuthGate';
@@ -17,22 +18,6 @@ import {
   type TaxBreakdown,
 } from '../utils/takeHomeTax';
 
-function downloadDataUrlMobileSafe(dataUrl: string, filename: string) {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-  if (isIOS) {
-    window.open(dataUrl, '_blank', 'noopener');
-    return;
-  }
-
-  const a = document.createElement('a');
-  a.href = dataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
 
 // ══════════════════════════════════════════════
 //  JSON data model for persistence
@@ -61,7 +46,7 @@ export interface TakeHomePayData {
 const THP_DEFAULTS: TakeHomePayData = {
   version: 1,
   householdMode: false,
-  salary: 35000,
+  salary: 0,
   period: 'annual',
   region: 'england',
   salarySacrifice: false,
@@ -69,7 +54,7 @@ const THP_DEFAULTS: TakeHomePayData = {
   sacrificeFixed: 0,
   partner1Name: 'Partner 1',
   partner2Name: 'Partner 2',
-  partner2Salary: 30000,
+  partner2Salary: 0,
   partner2Period: 'annual',
   partner2Region: 'england',
   partner2SalarySacrifice: false,
@@ -188,7 +173,7 @@ function PartnerInputFields({
               if (!isNaN(v)) onSalaryChange(v);
             }}
             onFocus={(e) => e.target.select()}
-            placeholder="35,000"
+            placeholder="e.g. 35,000"
           />
           <div className="thp-period-toggle">
             {(['annual', 'monthly', 'weekly'] as SalaryPeriod[]).map((p) => (
