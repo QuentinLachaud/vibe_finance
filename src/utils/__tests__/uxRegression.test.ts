@@ -49,6 +49,17 @@ describe('professional mobile UX contracts', () => {
     expect(pdf).toContain("drawItems('Liabilities'");
   });
 
+  it('self-recovers stale lazy route chunks instead of leaving Portfolio, Reports, or Settings blank', () => {
+    const router = read('src/router/index.tsx');
+    expect(router).toContain('function lazyWithReload');
+    expect(router).toContain('window.location.reload()');
+    expect(router).toContain('<LazyRouteBoundary>');
+    for (const route of ['compound-interest', 'net-worth', 'portfolio', 'reports', 'settings']) {
+      expect(router).toContain(`lazyWithReload('${route}'`);
+    }
+    expect(router).toContain('Page failed to load');
+  });
+
   it('routes generated report downloads through Blob/Object URLs instead of opening data URLs', () => {
     const helper = read('src/utils/downloadFile.ts');
     expect(helper).toContain('URL.createObjectURL(blob)');
