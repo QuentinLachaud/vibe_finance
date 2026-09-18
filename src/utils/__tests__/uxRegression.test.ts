@@ -49,15 +49,25 @@ describe('professional mobile UX contracts', () => {
     expect(pdf).toContain("drawItems('Liabilities'");
   });
 
-  it('self-recovers stale lazy route chunks instead of leaving Portfolio, Reports, or Settings blank', () => {
+  it('keeps all primary tool routes in the main bundle instead of fragile lazy chunks', () => {
     const router = read('src/router/index.tsx');
-    expect(router).toContain('function lazyWithReload');
-    expect(router).toContain('window.location.reload()');
-    expect(router).toContain('<LazyRouteBoundary>');
-    for (const route of ['compound-interest', 'net-worth', 'portfolio', 'reports', 'settings']) {
-      expect(router).toContain(`lazyWithReload('${route}'`);
+    expect(router).not.toContain('lazyWithReload');
+    expect(router).not.toContain('LazyRouteBoundary');
+    expect(router).not.toContain('Suspense');
+    expect(router).not.toContain('lazy(');
+
+    const pages = [
+      ['CompoundInterestPage', 'compound-interest'],
+      ['NetWorthPage', 'net-worth'],
+      ['PortfolioSimulatorPage', 'portfolio'],
+      ['ReportsPage', 'reports'],
+      ['SettingsPage', 'settings'],
+    ] as const;
+
+    for (const [component, route] of pages) {
+      expect(router).toContain(`import { ${component} } from '../pages/${component}';`);
+      expect(router).toContain(`{ path: '/${route}', element: <${component} /> }`);
     }
-    expect(router).toContain('Page failed to load');
   });
 
   it('routes generated report downloads through Blob/Object URLs instead of opening data URLs', () => {
