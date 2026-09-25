@@ -19,7 +19,7 @@ import { LoginModal } from '../components/LoginModal';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { TrashIcon } from '../components/Icons';
 import { LoadingCoin } from '../components/LoadingCoin';
-import { ReportFormatIcon, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
+import { ReportGenerateButton, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
 import { createReportHtml, escapeReportHtml } from '../utils/reportHtml';
 import { IncomeSection } from '../components/calculator/IncomeSection';
 import { ExpensesSection } from '../components/calculator/ExpensesSection';
@@ -407,9 +407,11 @@ export function CalculatorPage() {
             value={reportName}
             onChange={(e) => setReportName(e.target.value)}
           />
-          <button className="thp-cta" disabled={generatingReport} onClick={() => setShowReportPicker(true)}>
-            <ReportFormatIcon format="document" /> Generate Savings Report
-          </button>
+          <ReportGenerateButton
+            label="Generate Savings Report"
+            disabled={generatingReport}
+            onClick={() => setShowReportPicker(true)}
+          />
         </div>
       </div>
 

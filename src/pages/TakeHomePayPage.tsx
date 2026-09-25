@@ -10,7 +10,7 @@ import { useSavedReports } from '../hooks/useSavedReports';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { LoginModal } from '../components/LoginModal';
 import { LoadingCoin } from '../components/LoadingCoin';
-import { ReportFormatIcon, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
+import { ReportGenerateButton, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
 import { createReportHtml, escapeReportHtml } from '../utils/reportHtml';
 import type { CurrencyCode } from '../types';
 import {
@@ -735,13 +735,11 @@ export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = 
               <button className="thp-cta" onClick={handleSeeHowMuch}>
                  See how much you can save →
               </button>
-              <button
-                className="thp-cta"
+              <ReportGenerateButton
+                label={`Generate ${data.householdMode ? 'Household Take Home' : 'Take Home'} Report`}
                 disabled={generatingReport}
                 onClick={() => setShowReportPicker(true)}
-              >
-                <ReportFormatIcon format="document" /> Generate {data.householdMode ? 'Household Take Home' : 'Take Home'} Report
-              </button>
+              />
             </div>
           </div>
         </div>

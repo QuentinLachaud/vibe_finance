@@ -24,7 +24,7 @@ import { exportNetWorthPdf } from '../utils/exportPdf';
 import { downloadBlobMobileSafe, downloadDataUrlMobileSafe, printHtmlReport } from '../utils/downloadFile';
 import { signedTypeBreakdown, splitNetWorthItems } from '../utils/netWorthOrdering';
 import { useSavedReports } from '../hooks/useSavedReports';
-import { ReportFormatIcon, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
+import { ReportGenerateButton, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
 import { createReportHtml, escapeReportHtml } from '../utils/reportHtml';
 import type { CurrencyCode } from '../types';
 
@@ -1393,13 +1393,11 @@ export function NetWorthPage() {
         {/* Generate Report button */}
         {assets.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0 8px' }}>
-            <button
-              className="ps-btn ps-btn--primary"
+            <ReportGenerateButton
+              label="Generate Net Worth Report"
               disabled={generatingReport}
               onClick={() => setShowReportPicker(true)}
-            >
-              <ReportFormatIcon format="document" /> Generate Net Worth Report
-            </button>
+            />
           </div>
         )}
 

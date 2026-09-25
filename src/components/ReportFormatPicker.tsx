@@ -16,6 +16,23 @@ export function ReportFormatIcon({ format }: { format: ReportFormatIconName }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{paths}</svg>;
 }
 
+export function ReportGenerateButton({
+  label,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button className="report-generate-button" type="button" disabled={disabled} onClick={onClick}>
+      <ReportFormatIcon format="document" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
 export function ReportFormatPicker({ onSelect, onCancel }: { onSelect: (format: ReportFormat) => void; onCancel: () => void }) {
   return (
     <div className="report-overlay" onClick={onCancel}>

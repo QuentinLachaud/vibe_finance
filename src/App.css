@@ -4077,6 +4077,44 @@ body {
   color: var(--text-primary);
 }
 
+/* Shared compact report entry control. It deliberately does not use the savings CTA. */
+.report-generate-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 10px 14px;
+  background: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: var(--type-label);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.report-generate-button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.report-generate-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.report-generate-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.report-generate-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* ── Reports Page: Sections & Cards ── */
 
 .rp-page-subtitle {
