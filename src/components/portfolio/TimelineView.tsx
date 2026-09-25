@@ -120,6 +120,7 @@ export function TimelineView({ cashFlows, simulationEnd, currencyCode, onEdit }:
                   key={s.id}
                   className={`ps-tl-row ${!s.enabled ? 'ps-tl-row--disabled' : ''} ${editable ? 'ps-tl-row--clickable' : ''}`}
                   title={tooltipText(s, currencyCode)}
+                  aria-label={`${s.label}, ${amountStr(s, currencyCode)}, ${dateStr(s)}`}
                   onClick={editable ? handleActivate : undefined}
                   role={editable ? 'button' : undefined}
                   tabIndex={editable ? 0 : undefined}

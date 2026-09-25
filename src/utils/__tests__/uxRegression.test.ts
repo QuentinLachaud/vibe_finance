@@ -183,6 +183,8 @@ describe('professional mobile UX contracts', () => {
     expect(css).toContain('.ps-tl-axis-label--start');
     expect(css).toContain('.ps-tl-axis-label--end');
     expect(css).toMatch(/\.ps-tl-meta\s*\{[^}]*justify-content:\s*space-between/s);
+    expect(timeline).toContain('aria-label={`${s.label}, ${amountStr(s, currencyCode)}, ${dateStr(s)}`}');
+    expect(css).toMatch(/\.ps-tl-row\s*\{[^}]*min-height:\s*44px/s);
   });
 
 
