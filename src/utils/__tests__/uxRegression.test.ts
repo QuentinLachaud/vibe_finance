@@ -116,4 +116,20 @@ describe('professional mobile UX contracts', () => {
     expect(settings).toContain('settings-currency');
   });
 
+  it('uses a restrained Apple-style colour system in both themes', () => {
+    const css = read('src/App.css');
+
+
+    expect(css).toContain('TAKEHOMECALC SERIOUS IOS PALETTE');
+    expect(css).toContain('--bg-primary: #0b0b0c');
+    expect(css).toContain('--accent-primary: #0a84ff');
+    expect(css).toContain('--bg-primary: #f5f5f7');
+    expect(css).toContain('--text-primary: #1d1d1f');
+    expect(css).toContain('--accent-primary: #007aff');
+    expect(css).toContain('.landing-salary-searches,');
+    expect(css).toContain('background-image: none !important');
+    expect(css).toContain('.ps-btn--gold');
+    expect(css).toContain('background: var(--accent-primary) !important');
+  });
+
 });
