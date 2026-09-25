@@ -80,4 +80,40 @@ describe('professional mobile UX contracts', () => {
       expect(source).not.toContain('function downloadDataUrlMobileSafe');
     }
   });
+  it('keeps landing content visible without legacy reveal-state classes', () => {
+    const landing = read('src/pages/LandingPage.tsx');
+    const css = read('src/App.css');
+
+
+    expect(landing).not.toContain('landing-hero--visible');
+    expect(landing).not.toContain('landing-tools-header--visible');
+    expect(landing).not.toContain('landing-feature-card--visible');
+
+
+    expect(css).not.toMatch(/\.landing-hero\s*\{[^}]*opacity:\s*0/s);
+    expect(css).not.toMatch(/\.landing-tools-header\s*\{[^}]*opacity:\s*0/s);
+    expect(css).not.toMatch(/\.landing-feature-card\s*\{[^}]*opacity:\s*0/s);
+    expect(css).not.toContain('.landing-hero--visible');
+    expect(css).not.toContain('.landing-tools-header--visible');
+    expect(css).not.toContain('.landing-feature-card--visible');
+  });
+
+
+  it('keeps display preferences in Settings instead of the global header', () => {
+    const header = read('src/components/Header.tsx');
+    const settings = read('src/pages/SettingsPage.tsx');
+
+
+    expect(header).not.toContain('useTheme');
+    expect(header).not.toContain('useCurrency');
+    expect(header).not.toContain('theme-toggle');
+    expect(header).not.toContain('currency-select');
+    expect(header).not.toContain('nav-link--gold');
+
+
+    expect(settings).toContain('useTheme');
+    expect(settings).toContain('useCurrency');
+    expect(settings).toContain('settings-currency');
+  });
+
 });

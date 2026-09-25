@@ -6646,15 +6646,6 @@ body {
   padding: 32px 24px 8px;
   max-width: 720px;
   width: 100%;
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.landing-tools-header--visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .landing-tools-greeting {
@@ -6694,15 +6685,6 @@ body {
   padding: 80px 24px 60px;
   max-width: 720px;
   width: 100%;
-  opacity: 0;
-  transform: translateY(32px);
-  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.landing-hero--visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .landing-hero-glow {
@@ -6892,17 +6874,7 @@ body {
   border: 1px solid var(--border-color);
   text-decoration: none;
   color: inherit;
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.2s,
-              box-shadow 0.2s;
-}
-
-.landing-feature-card--visible {
-  opacity: 1;
-  transform: translateY(0);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .landing-feature-card:hover {
