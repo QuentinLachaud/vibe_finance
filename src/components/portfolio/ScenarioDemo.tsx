@@ -131,13 +131,13 @@ export function ScenarioDemo({ onGetStarted }: ScenarioDemoProps) {
 
             <XAxis
               dataKey="label"
-              tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+              tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
               axisLine={{ stroke: 'var(--border-color)' }}
               tickLine={false}
             />
 
             <YAxis
-              tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+              tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v: number) =>

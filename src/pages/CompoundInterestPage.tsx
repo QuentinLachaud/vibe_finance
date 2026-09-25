@@ -587,13 +587,13 @@ export function CompoundInterestPage() {
                     />
                     <XAxis
                       dataKey="year"
-                      tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                      tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
                       axisLine={{ stroke: 'var(--border-color)' }}
                       tickLine={false}
                       tickFormatter={(v) => (chartData.length > 20 && v % 5 !== 0 ? '' : `${v}`)}
                     />
                     <YAxis
-                      tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                      tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
                       axisLine={false}
                       tickLine={false}
                       tickFormatter={(v) => {
@@ -607,7 +607,7 @@ export function CompoundInterestPage() {
                       cursor={{ fill: 'rgba(255,255,255,0.03)' }}
                     />
                     <Legend
-                      wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
+                      wrapperStyle={{ fontFamily: 'var(--font-family)', fontSize: 'var(--type-chart-label)', color: 'var(--text-secondary)' }}
                     />
                     {isWithdrawal ? (
                       <>

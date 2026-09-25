@@ -52,38 +52,37 @@ export function ContactModal({ onClose }: ContactModalProps) {
 
   return (
     <div className="login-overlay" onClick={onClose}>
-      <div className="login-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440, textAlign: 'left' }}>
+      <div className="login-modal contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title" onClick={(e) => e.stopPropagation()}>
         {sent ? (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
-            <h2 id="contact-modal-title" style={{ color: 'var(--text-primary)', marginBottom: 8, fontSize: 20 }}>Message sent!</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+          <div className="contact-modal__sent">
+            <div className="contact-modal__sent-icon">✉️</div>
+            <h2 id="contact-modal-title" className="contact-modal__title">Message sent!</h2>
+            <p className="contact-modal__copy">
               Thanks for reaching out. I'll get back to you as soon as I can.
             </p>
             <button
-              className="settings-btn settings-btn--primary"
+              className="settings-btn settings-btn--primary contact-modal__action"
               onClick={onClose}
-              style={{ padding: '10px 24px', fontSize: 14 }}
             >
               Close
             </button>
           </div>
         ) : (
           <>
-            <h2 id="contact-modal-title" style={{ color: 'var(--text-primary)', marginBottom: 6, fontSize: 20, textAlign: 'center' }}>
+            <h2 id="contact-modal-title" className="contact-modal__title contact-modal__title--centered">
               Contact the Developer
             </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24, textAlign: 'center', lineHeight: 1.5 }}>
+            <p className="contact-modal__copy contact-modal__copy--centered">
               Got feedback, a bug report, or a feature idea? I'd love to hear from you.
             </p>
 
             <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: 14 }}>
+              <div className="contact-modal__field">
                 <label
                   htmlFor="contact-email"
-                  style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}
+                  className="contact-modal__label"
                 >
-                  Your email <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                  Your email <span className="contact-modal__optional">(optional)</span>
                 </label>
                 <input
                   id="contact-email"
@@ -97,10 +96,10 @@ export function ContactModal({ onClose }: ContactModalProps) {
                 />
               </div>
 
-              <div style={{ marginBottom: 18 }}>
+              <div className="contact-modal__field contact-modal__field--message">
                 <label
                   htmlFor="contact-message"
-                  style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}
+                  className="contact-modal__label"
                 >
                   Your message
                 </label>
@@ -112,44 +111,29 @@ export function ContactModal({ onClose }: ContactModalProps) {
                   onChange={(e) => setMessage(e.target.value)}
                   required
                   rows={6}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-input)',
-                    color: 'var(--text-primary)',
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                    lineHeight: 1.6,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
+                  className="contact-modal__message"
                 />
               </div>
 
               {error && (
-                <p style={{ color: 'var(--color-danger, #ef4444)', fontSize: 13, marginBottom: 12 }}>
+                <p className="contact-modal__error">
                   {error}
                 </p>
               )}
 
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <div className="contact-modal__actions">
                 <button
                   type="button"
-                  className="settings-btn settings-btn--secondary"
+                  className="settings-btn settings-btn--secondary contact-modal__action"
                   onClick={onClose}
                   disabled={sending}
-                  style={{ padding: '10px 18px', fontSize: 13 }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="settings-btn settings-btn--primary"
+                  className="settings-btn settings-btn--primary contact-modal__action"
                   disabled={sending || !message.trim()}
-                  style={{ padding: '10px 18px', fontSize: 13 }}
                 >
                   {sending ? 'Sending…' : 'Send my comments!'}
                 </button>

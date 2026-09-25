@@ -42,6 +42,8 @@ const DEFAULT_VOLATILITY = 15;
 const COLOR_VIOLET = '#8b5cf6';
 const COLOR_EMERALD = '#10b981';
 const COLOR_CYAN = '#22d3ee';
+const REPORT_CHART_TICK_SIZE = 11;
+const REPORT_CHART_LABEL_SIZE = 11;
 
 // ── Helpers ──
 
@@ -202,19 +204,19 @@ function buildMonteCarloSVG(result: SimulationResult, _fmt: (n: number) => strin
   const xLabels = ts.filter((_, i) => i % labelInterval === 0 || i === ts.length - 1)
     .map(t => {
       const i = ts.indexOf(t);
-      return `<text x="${x(i).toFixed(1)}" y="${H - 5}" fill="#71717a" font-size="10" text-anchor="middle">${t.label}</text>`;
+      return `<text x="${x(i).toFixed(1)}" y="${H - 5}" fill="#71717a" font-size="${REPORT_CHART_TICK_SIZE}" text-anchor="middle">${t.label}</text>`;
     }).join('');
 
   const yTicks = 5;
   const yLabels = Array.from({ length: yTicks + 1 }, (_, i) => {
     const v = minV + (range * i) / yTicks;
     const label = v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : String(Math.round(v));
-    return `<text x="${PAD_L - 8}" y="${y(v).toFixed(1)}" fill="#71717a" font-size="10" text-anchor="end" dominant-baseline="middle">${label}</text>
+    return `<text x="${PAD_L - 8}" y="${y(v).toFixed(1)}" fill="#71717a" font-size="${REPORT_CHART_TICK_SIZE}" text-anchor="end" dominant-baseline="middle">${label}</text>
     <line x1="${PAD_L}" y1="${y(v).toFixed(1)}" x2="${W - PAD_R}" y2="${y(v).toFixed(1)}" stroke="#2a2a35" stroke-dasharray="3,3"/>`;
   }).join('');
 
   return `
-    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;margin:12px 0;">
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif" style="width:100%;height:auto;display:block;margin:12px 0;">
       ${yLabels}
       <path d="${bandOuter}" fill="${COLOR_VIOLET}" fill-opacity="0.18"/>
       <path d="${bandInner}" fill="${COLOR_EMERALD}" fill-opacity="0.22"/>
@@ -222,11 +224,11 @@ function buildMonteCarloSVG(result: SimulationResult, _fmt: (n: number) => strin
       ${xLabels}
       <!-- Legend -->
       <rect x="${PAD_L}" y="${PAD_T - 14}" width="10" height="10" rx="2" fill="${COLOR_VIOLET}" fill-opacity="0.35"/>
-      <text x="${PAD_L + 14}" y="${PAD_T - 5}" fill="#a1a1aa" font-size="9">10th–90th</text>
+      <text x="${PAD_L + 14}" y="${PAD_T - 5}" fill="#a1a1aa" font-size="${REPORT_CHART_LABEL_SIZE}">10th–90th</text>
       <rect x="${PAD_L + 80}" y="${PAD_T - 14}" width="10" height="10" rx="2" fill="${COLOR_EMERALD}" fill-opacity="0.45"/>
-      <text x="${PAD_L + 94}" y="${PAD_T - 5}" fill="#a1a1aa" font-size="9">25th–75th</text>
+      <text x="${PAD_L + 94}" y="${PAD_T - 5}" fill="#a1a1aa" font-size="${REPORT_CHART_LABEL_SIZE}">25th–75th</text>
       <line x1="${PAD_L + 165}" y1="${PAD_T - 9}" x2="${PAD_L + 180}" y2="${PAD_T - 9}" stroke="${COLOR_CYAN}" stroke-width="2"/>
-      <text x="${PAD_L + 184}" y="${PAD_T - 5}" fill="#a1a1aa" font-size="9">Median</text>
+      <text x="${PAD_L + 184}" y="${PAD_T - 5}" fill="#a1a1aa" font-size="${REPORT_CHART_LABEL_SIZE}">Median</text>
     </svg>
   `;
 }
@@ -272,7 +274,7 @@ function buildHistogramSVG(result: SimulationResult, _fmt: (n: number) => string
   ].map(r => {
     const rx = xOfVal(r.v);
     return `<line x1="${rx.toFixed(1)}" y1="${PAD_T}" x2="${rx.toFixed(1)}" y2="${PAD_T + chartH}" stroke="${r.color}" stroke-width="1.5" stroke-dasharray="4,3"/>
-    <text x="${rx.toFixed(1)}" y="${PAD_T - 4}" fill="${r.color}" font-size="9" text-anchor="middle">${r.label}</text>`;
+    <text x="${rx.toFixed(1)}" y="${PAD_T - 4}" fill="${r.color}" font-size="${REPORT_CHART_LABEL_SIZE}" text-anchor="middle">${r.label}</text>`;
   }).join('');
 
   // X labels
@@ -282,11 +284,11 @@ function buildHistogramSVG(result: SimulationResult, _fmt: (n: number) => string
     const cx = PAD_L + (i + 0.5) * barW;
     const mid = (b.lo + b.hi) / 2;
     const label = mid >= 1e6 ? `${(mid / 1e6).toFixed(1)}M` : mid >= 1e3 ? `${(mid / 1e3).toFixed(0)}K` : String(Math.round(mid));
-    return `<text x="${cx.toFixed(1)}" y="${H - 5}" fill="#71717a" font-size="9" text-anchor="middle">${label}</text>`;
+    return `<text x="${cx.toFixed(1)}" y="${H - 5}" fill="#71717a" font-size="${REPORT_CHART_TICK_SIZE}" text-anchor="middle">${label}</text>`;
   }).join('');
 
   return `
-    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;margin:12px 0;">
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif" style="width:100%;height:auto;display:block;margin:12px 0;">
       <line x1="${PAD_L}" y1="${PAD_T + chartH}" x2="${W - PAD_R}" y2="${PAD_T + chartH}" stroke="#2a2a35"/>
       ${bars}
       ${refLines}
@@ -477,12 +479,16 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
     --brand: #8b5cf6; --brand-dark: #6d28d9;
     --bg: #0e0e12; --surface: #151519; --surface-2: #1a1a20;
     --border: #252530; --text: #d4d4d8; --text-sec: #a1a1aa; --text-muted: #71717a;
+    --report-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+    --report-caption: 11px; --report-meta: 12px; --report-label: 13px;
+    --report-body: 15px; --report-section: 20px; --report-title: 30px; --report-value: 22px;
+    --report-label-tracking: .04em;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--report-font);
     background: var(--bg); color: var(--text);
-    line-height: 1.65; font-size: 14px;
+    line-height: 1.5; font-size: var(--report-body);
   }
 
   /* Header */
@@ -492,38 +498,38 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
     padding: 36px 48px;
   }
   .report-header .brand {
-    font-size: 12px; color: var(--text-muted);
-    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;
+    font-size: var(--report-meta); color: var(--text-muted);
+    letter-spacing: var(--report-label-tracking); text-transform: uppercase; margin-bottom: 6px;
   }
-  .report-header h1 { font-size: 24px; font-weight: 700; color: #fff; }
-  .report-header .date { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .report-header h1 { font-size: var(--report-title); font-weight: 700; color: #fff; }
+  .report-header .date { font-size: var(--report-meta); color: var(--text-muted); margin-top: 4px; }
 
   .content { max-width: 860px; margin: 0 auto; padding: 36px 28px 72px; }
 
   /* Scenario blocks */
   .scenario-block { margin-bottom: 56px; }
   .scenario-header { margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 12px; }
-  .scenario-header h2 { font-size: 20px; font-weight: 700; color: #fff; }
+  .scenario-header h2 { font-size: var(--report-section); font-weight: 700; color: #fff; }
 
   /* Page sections */
   .page-section { margin-bottom: 36px; }
   .page-break { page-break-before: auto; }
   .section-badge {
     display: inline-block;
-    font-size: 10px; font-weight: 700; color: var(--brand);
-    text-transform: uppercase; letter-spacing: 1.2px;
+    font-size: var(--report-caption); font-weight: 700; color: var(--brand);
+    text-transform: uppercase; letter-spacing: var(--report-label-tracking);
     border: 1px solid var(--brand); border-radius: 4px;
     padding: 2px 10px; margin-bottom: 12px;
   }
   .section-explainer {
-    font-size: 13px; color: var(--text-sec);
+    font-size: var(--report-label); color: var(--text-sec);
     line-height: 1.7; margin-bottom: 16px;
     max-width: 720px;
   }
 
   /* Narrative */
   .narrative { margin-bottom: 24px; }
-  .narrative p { font-size: 13.5px; color: var(--text-sec); margin-bottom: 10px; line-height: 1.7; }
+  .narrative p { font-size: var(--report-label); color: var(--text-sec); margin-bottom: 10px; line-height: 1.6; }
   .narrative strong { color: #fff; font-weight: 600; }
 
   /* KPI cards */
@@ -533,8 +539,8 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
     border-radius: 8px; padding: 18px 16px; text-align: center;
   }
   .kpi-accent { border-color: rgba(34,211,238,0.25); background: rgba(34,211,238,0.04); }
-  .kpi-value { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
-  .kpi-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-value { font-size: var(--report-value); font-weight: 700; margin-bottom: 2px; }
+  .kpi-label { font-size: var(--report-caption); color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--report-label-tracking); }
 
   .kpi-row-secondary { gap: 10px; }
   .kpi-sm {
@@ -542,16 +548,16 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
     border-radius: 6px; padding: 10px 12px; text-align: center;
     display: flex; flex-direction: column; gap: 2px;
   }
-  .kpi-sm-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .kpi-sm-value { font-size: 14px; font-weight: 700; color: var(--text); }
+  .kpi-sm-label { font-size: var(--report-caption); color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--report-label-tracking); }
+  .kpi-sm-value { font-size: var(--report-label); font-weight: 700; color: var(--text); }
 
   /* Tables */
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: var(--report-meta); margin-top: 4px; }
   thead { background: var(--surface-2); }
   th {
     padding: 8px 10px; text-align: left; color: var(--text-muted);
-    font-weight: 600; font-size: 10px; text-transform: uppercase;
-    letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+    font-weight: 600; font-size: var(--report-caption); text-transform: uppercase;
+    letter-spacing: var(--report-label-tracking); border-bottom: 1px solid var(--border);
   }
   td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -560,7 +566,7 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
   tr:nth-child(even) { background: rgba(255,255,255,0.015); }
 
   /* Tags */
-  .tag { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; display: inline-block; }
+  .tag { font-size: var(--report-caption); padding: 2px 8px; border-radius: 4px; font-weight: 600; display: inline-block; }
   .tag-deposit { background: rgba(16,185,129,0.12); color: ${COLOR_EMERALD}; }
   .tag-withdrawal { background: rgba(234,179,8,0.12); color: #eab308; }
   .tag-oneoff { background: rgba(139,92,246,0.12); color: ${COLOR_VIOLET}; }
@@ -569,7 +575,7 @@ function generateHTML(reports: ScenarioReport[], code: CurrencyCode, simVolatili
 
   /* Footer */
   .report-footer {
-    text-align: center; padding: 20px; font-size: 11px;
+    text-align: center; padding: 20px; font-size: var(--report-caption);
     color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 40px;
   }
 

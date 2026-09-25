@@ -132,4 +132,41 @@ describe('professional mobile UX contracts', () => {
     expect(css).toContain('background: var(--accent-primary) !important');
   });
 
+  it('keeps typography on a compact system-font product scale', () => {
+    const css = read('src/App.css');
+
+    expect(css).toMatch(/--font-family:\s*-apple-system,\s*BlinkMacSystemFont/);
+    expect(css).not.toContain("--font-family: 'Inter'");
+    for (const token of [
+      '--type-caption: 11px',
+      '--type-body: 15px',
+      '--type-control: 16px',
+      '--type-section: 18px',
+      '--type-page-title: 30px',
+      '--weight-semibold: 600',
+      '--weight-bold: 700',
+    ]) {
+      expect(css).toContain(token);
+    }
+
+    expect(css).toMatch(/\.page-title\s*\{[^}]*font-size:\s*var\(--type-page-title\)/s);
+    expect(css).toMatch(/\.landing-hero-title\s*\{[^}]*font-size:\s*var\(--type-page-title\)/s);
+    expect(css).not.toMatch(/font-size:\s*clamp\([^;]*56px/);
+    expect(css).not.toMatch(/font-weight:\s*(?:800|900)/);
+  });
+
+  it('uses shared control and chart typography, including on mobile', () => {
+    const css = read('src/App.css');
+    const compoundInterest = read('src/pages/CompoundInterestPage.tsx');
+    const netWorth = read('src/pages/NetWorthPage.tsx');
+    const monteCarlo = read('src/components/portfolio/MonteCarloChart.tsx');
+
+    expect(css).toMatch(/@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*input,[\s\S]*font-size:\s*var\(--type-control\)\s*!important/s);
+    expect(css).toMatch(/\.ci-label\s*\{[^}]*font-size:\s*var\(--type-label\)/s);
+    expect(css).toMatch(/\.rp-format-label\s*\{[^}]*font-size:\s*var\(--type-body\)/s);
+    expect(compoundInterest).toContain("fontSize: 'var(--type-chart-tick)'");
+    expect(netWorth).toContain("fontSize: 'var(--type-chart-label)'");
+    expect(monteCarlo).toContain('fontSize="var(--type-chart-tick)"');
+  });
+
 });

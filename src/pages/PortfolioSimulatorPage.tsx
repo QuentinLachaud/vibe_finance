@@ -1232,8 +1232,8 @@ export function PortfolioSimulatorPage() {
       {showVolatilityWarning && (
         <div className="confirm-overlay" onClick={() => { setShowVolatilityWarning(false); setPendingVolatility(null); }}>
           <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <p className="confirm-message" style={{ fontWeight: 600, fontSize: 15 }}>⚠️ Adjust Volatility?</p>
-            <p className="confirm-detail" style={{ fontSize: 13, opacity: 0.8, marginTop: 6, lineHeight: 1.5 }}>
+            <p className="confirm-message confirm-message--warning">⚠️ Adjust Volatility?</p>
+            <p className="confirm-detail confirm-detail--warning">
               Changing volatility from the default ({DEFAULT_VOLATILITY}%) will significantly affect simulation
               results. Only change this if you understand how standard deviation of returns impacts
               Monte Carlo projections.

@@ -598,10 +598,10 @@ function AssetHistoryChart({ asset, currencyCode, color }: { asset: Asset; curre
               <stop offset="100%" stopColor={color} stopOpacity={0.03} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} tickLine={false} axisLine={false} />
+          <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }} tickLine={false} axisLine={false} />
           <YAxis hide domain={['dataMin', 'dataMax']} />
           <Tooltip
-            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, fontFamily: 'var(--font-family)', fontSize: 'var(--type-chart-label)' }}
             formatter={(v: number | undefined) => v != null ? formatCurrency(v, currencyCode) : ''}
             labelStyle={{ color: 'var(--text-muted)' }}
           />
@@ -656,12 +656,12 @@ function NetWorthChart({ assets, currencyCode }: { assets: Asset[]; currencyCode
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
+            tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
             tickLine={false}
             axisLine={{ stroke: 'var(--border-color)' }}
           />
           <YAxis
-            tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+            tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) =>
@@ -669,7 +669,7 @@ function NetWorthChart({ assets, currencyCode }: { assets: Asset[]; currencyCode
             }
           />
           <Tooltip
-            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, fontFamily: 'var(--font-family)', fontSize: 'var(--type-chart-label)' }}
             formatter={(v: number | undefined) => v != null ? formatCurrency(v, currencyCode) : ''}
             labelStyle={{ color: 'var(--text-muted)' }}
           />
@@ -945,16 +945,17 @@ function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>Net Worth Report</title>
 <style>
+  :root { --report-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif; --report-caption: 11px; --report-body: 15px; --report-title: 30px; --report-value: 32px; }
   @page { size: A4; margin: 18mm; }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #151515; background: #fff; line-height: 1.4; }
+  body { margin: 0; font-family: var(--report-font); color: #151515; background: #fff; font-size: var(--report-body); line-height: 1.5; }
   .report { max-width: 820px; margin: 0 auto; padding: 36px; }
-  .eyebrow { color: #6b7280; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
-  h1 { margin: 6px 0 2px; font-size: 28px; letter-spacing: -.02em; }
+  .eyebrow { color: #6b7280; font-size: var(--report-caption); letter-spacing: .04em; text-transform: uppercase; }
+  h1 { margin: 6px 0 2px; font-size: var(--report-title); letter-spacing: -.02em; }
   .date { color: #6b7280; font-size: 13px; }
   .hero { margin: 28px 0 18px; padding: 22px 24px; border: 1px solid #dfe3e8; border-radius: 12px; background: #fff; }
-  .hero-label { color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-  .hero-value { margin-top: 5px; font-size: 38px; font-weight: 750; letter-spacing: -.035em; color: #111827; }
+  .hero-label { color: #6b7280; font-size: var(--report-caption); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .hero-value { margin-top: 5px; font-size: var(--report-value); font-weight: 700; letter-spacing: -.02em; color: #111827; }
   .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
   .summary-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
   .summary-label { color: #6b7280; font-size: 12px; }

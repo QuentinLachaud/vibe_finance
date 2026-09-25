@@ -170,13 +170,13 @@ function DistributionView({
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
+              tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
               axisLine={{ stroke: 'var(--border-color)' }}
               tickLine={false}
               interval={Math.max(0, Math.floor(bins.length / 6) - 1)}
             />
             <YAxis
-              tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+              tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
               axisLine={false}
               tickLine={false}
             />
@@ -189,13 +189,13 @@ function DistributionView({
               })}
             </Bar>
             <ReferenceLine x={bins.find(b => (b.binStart + b.binEnd) / 2 >= median)?.label} stroke={COLOR_MEDIAN} strokeWidth={2} strokeDasharray="4 4">
-              <Label value="Median" position="top" fill={COLOR_MEDIAN} fontSize={11} />
+              <Label value="Median" position="top" fill={COLOR_MEDIAN} fontSize="var(--type-chart-tick)" />
             </ReferenceLine>
             <ReferenceLine x={bins.find(b => (b.binStart + b.binEnd) / 2 >= p25)?.label} stroke="#eab308" strokeWidth={1.5} strokeDasharray="4 4">
-              <Label value="25th" position="top" fill="#eab308" fontSize={10} />
+              <Label value="25th" position="top" fill="#eab308" fontSize="var(--type-chart-tick)" />
             </ReferenceLine>
             <ReferenceLine x={bins.find(b => (b.binStart + b.binEnd) / 2 >= p75)?.label} stroke={COLOR_INNER} strokeWidth={1.5} strokeDasharray="4 4">
-              <Label value="75th" position="top" fill={COLOR_INNER} fontSize={10} />
+              <Label value="75th" position="top" fill={COLOR_INNER} fontSize="var(--type-chart-tick)" />
             </ReferenceLine>
           </BarChart>
         </ResponsiveContainer>
@@ -275,7 +275,7 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
 
               <XAxis
                 dataKey="label"
-                tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
                 axisLine={{ stroke: 'var(--border-color)' }}
                 tickLine={false}
                 tickMargin={8}
@@ -284,7 +284,7 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
               />
 
               <YAxis
-                tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                tick={{ fill: 'var(--text-muted)', fontSize: 'var(--type-chart-tick)' }}
                 axisLine={false}
                 tickLine={false}
                 tickMargin={4}
@@ -354,7 +354,7 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
               />
 
               <Legend
-                wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }}
+                wrapperStyle={{ fontFamily: 'var(--font-family)', fontSize: 'var(--type-chart-label)', color: 'var(--text-secondary)' }}
               />
             </AreaChart>
           </ResponsiveContainer>

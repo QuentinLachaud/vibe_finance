@@ -261,12 +261,12 @@ export function SettingsPage() {
         <div className="report-overlay" onClick={() => !isDeleting && setShowDeleteConfirm(false)}>
           <div className="report-popup" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <h2 style={{ color: 'var(--color-danger, #ef4444)', marginBottom: 8 }}>Delete Account</h2>
-            <p style={{ marginBottom: 16, lineHeight: 1.6 }}>
+            <p className="settings-delete-copy">
               This action is <strong>permanent and irreversible</strong>. All your saved scenarios,
               net worth data, and preferences will be deleted forever.
             </p>
             {deleteError && (
-              <p style={{ color: 'var(--color-danger, #ef4444)', marginBottom: 12, fontSize: 14 }}>
+              <p className="settings-delete-error">
                 {deleteError}
               </p>
             )}
