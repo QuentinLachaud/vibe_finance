@@ -21,9 +21,11 @@ import { TrashIcon } from '../components/Icons';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { LoadingCoin } from '../components/LoadingCoin';
 import { exportNetWorthPdf } from '../utils/exportPdf';
-import { downloadDataUrlMobileSafe } from '../utils/downloadFile';
+import { downloadBlobMobileSafe, downloadDataUrlMobileSafe, printHtmlReport } from '../utils/downloadFile';
 import { signedTypeBreakdown, splitNetWorthItems } from '../utils/netWorthOrdering';
 import { useSavedReports } from '../hooks/useSavedReports';
+import { ReportFormatIcon, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
+import { createReportHtml, escapeReportHtml } from '../utils/reportHtml';
 import type { CurrencyCode } from '../types';
 
 // ── Types ──
@@ -79,13 +81,6 @@ function isDebtType(type: string): boolean {
 }
 
 type SortMode = 'type' | 'class' | 'value';
-
-function ReportFormatIcon({ format }: { format: 'document' | 'web' | 'print' | 'table' }) {
-  const paths = format === 'web' ? <><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 9v11"/></>
-    : format === 'table' ? <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></>
-      : <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></>;
-  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{paths}</svg>;
-}
 
 const ASSET_COLORS = [
   '#22d3ee', '#8b5cf6', '#10b981', '#f59e0b',
@@ -848,29 +843,6 @@ function DonutBreakdown({ assets, currencyCode }: { assets: Asset[]; currencyCod
 
 // ── Net Worth Report Generation ──
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-  if (isIOS) {
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-    return;
-  }
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-
-type NWReportFormat = 'html' | 'csv' | 'pdf' | 'pdf-native';
-
 function generateNWCSV(assets: Asset[], code: CurrencyCode): string {
   const fmt = (v: number) => formatCurrency(v, code);
   const lines: string[] = [];
@@ -915,11 +887,6 @@ function generateNWCSV(assets: Asset[], code: CurrencyCode): string {
 
 function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
   const fmt = (v: number) => formatCurrency(v, code);
-  const esc = (value: string) => value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
   const now = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
   const totalAssets = assets.filter((a) => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
   const totalDebts = assets.filter((a) => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
@@ -928,66 +895,29 @@ function generateNWHTML(assets: Asset[], code: CurrencyCode): string {
 
   const rows = (items: Array<Asset & { value: number }>, liability = false) => items.map((a) => `
     <tr>
-      <td><strong>${esc(a.name)}</strong></td>
-      <td>${esc(a.type)}</td>
+      <td><strong>${escapeReportHtml(a.name)}</strong></td>
+      <td>${escapeReportHtml(a.type)}</td>
       <td class="num">${liability ? fmt(Math.abs(a.value)) : fmt(a.value)}</td>
     </tr>`).join('');
 
   const section = (title: string, items: Array<Asset & { value: number }>, liability = false) => `
     <section>
-      <div class="section-title"><h2>${title}</h2><span>${items.length} item${items.length === 1 ? '' : 's'}</span></div>
+      <h2>${title} · ${items.length} item${items.length === 1 ? '' : 's'}</h2>
       <table>
         <thead><tr><th>Name</th><th>Type</th><th class="num">Value</th></tr></thead>
         <tbody>${rows(items, liability) || '<tr><td colspan="3" class="empty">None recorded</td></tr>'}</tbody>
       </table>
     </section>`;
 
-  return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>Net Worth Report</title>
-<style>
-  :root { --report-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif; --report-caption: 11px; --report-body: 15px; --report-title: 30px; --report-value: 32px; }
-  @page { size: A4; margin: 18mm; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: var(--report-font); color: #151515; background: #fff; font-size: var(--report-body); line-height: 1.5; }
-  .report { max-width: 820px; margin: 0 auto; padding: 36px; }
-  .eyebrow { color: #6b7280; font-size: var(--report-caption); letter-spacing: .04em; text-transform: uppercase; }
-  h1 { margin: 6px 0 2px; font-size: var(--report-title); letter-spacing: -.02em; }
-  .date { color: #6b7280; font-size: 13px; }
-  .hero { margin: 28px 0 18px; padding: 22px 24px; border: 1px solid #dfe3e8; border-radius: 12px; background: #fff; }
-  .hero-label { color: #6b7280; font-size: var(--report-caption); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-  .hero-value { margin-top: 5px; font-size: var(--report-value); font-weight: 700; letter-spacing: -.02em; color: #111827; }
-  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
-  .summary-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
-  .summary-label { color: #6b7280; font-size: 12px; }
-  .summary-value { margin-top: 4px; font-size: 20px; font-weight: 700; }
-  section { margin: 24px 0; page-break-inside: avoid; }
-  .section-title { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #111827; padding-bottom: 7px; margin-bottom: 8px; }
-  .section-title h2 { margin: 0; font-size: 17px; }
-  .section-title span { color: #6b7280; font-size: 12px; }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  th, td { padding: 9px 6px; border-bottom: 1px solid #eceff2; text-align: left; font-size: 12px; overflow-wrap: anywhere; }
-  th { color: #6b7280; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
-  th:nth-child(1), td:nth-child(1) { width: 44%; }
-  th:nth-child(2), td:nth-child(2) { width: 32%; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .empty { color: #9ca3af; text-align: center; padding: 18px; }
-  .footer { margin-top: 34px; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 10px; }
-  @media print { .report { padding: 0; } }
-</style></head><body>
-  <main class="report">
-    <div class="eyebrow">TakeHomeCalc</div>
-    <h1>Net Worth Report</h1>
-    <div class="date">${now}</div>
-    <div class="hero"><div class="hero-label">Net Worth</div><div class="hero-value">${fmt(netWorth)}</div></div>
+  return createReportHtml('Net Worth Report', now, `
+    <div class="hero"><div class="metric-label">Net Worth</div><div class="metric-value">${fmt(netWorth)}</div></div>
     <div class="summary">
       <div class="summary-card"><div class="summary-label">Assets</div><div class="summary-value">${fmt(totalAssets)}</div></div>
       <div class="summary-card"><div class="summary-label">Liabilities</div><div class="summary-value">${fmt(totalDebts)}</div></div>
     </div>
     ${section('Assets', ordered.assets)}
     ${section('Liabilities', ordered.liabilities, true)}
-    <div class="footer">TakeHomeCalc · Net Worth Report · Generated ${now}</div>
-  </main>
-</body></html>`;
+  `);
 }
 
 
@@ -1065,23 +995,18 @@ export function NetWorthPage() {
   const [showReportPicker, setShowReportPicker] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
 
-  const handleGenerateReport = useCallback((format: NWReportFormat) => {
+  const handleGenerateReport = useCallback((format: ReportFormat) => {
     setGeneratingReport(true);
     setShowReportPicker(false);
     try {
       const timestamp = new Date().toISOString().slice(0, 10);
       if (format === 'csv') {
-        downloadBlob(new Blob([generateNWCSV(assets, currency.code)], { type: 'text/csv' }), `net-worth-report-${timestamp}.csv`);
+        downloadBlobMobileSafe(new Blob([generateNWCSV(assets, currency.code)], { type: 'text/csv' }), `net-worth-report-${timestamp}.csv`);
       } else if (format === 'html') {
-        downloadBlob(new Blob([generateNWHTML(assets, currency.code)], { type: 'text/html' }), `net-worth-report-${timestamp}.html`);
+        downloadBlobMobileSafe(new Blob([generateNWHTML(assets, currency.code)], { type: 'text/html' }), `net-worth-report-${timestamp}.html`);
       } else if (format === 'pdf') {
         const html = generateNWHTML(assets, currency.code);
-        const win = window.open('', '_blank');
-        if (win) {
-          win.document.write(html);
-          win.document.close();
-          setTimeout(() => win.print(), 500);
-        }
+        printHtmlReport(html);
       } else if (format === 'pdf-native') {
         const totalAssets = assets.filter(a => latestValue(a) >= 0).reduce((s, a) => s + latestValue(a), 0);
         const totalDebts = assets.filter(a => latestValue(a) < 0).reduce((s, a) => s + Math.abs(latestValue(a)), 0);
@@ -1478,33 +1403,7 @@ export function NetWorthPage() {
           </div>
         )}
 
-        {/* Report format picker */}
-        {showReportPicker && (
-          <div className="report-overlay" onClick={() => setShowReportPicker(false)}>
-            <div className="rp-format-picker" onClick={(e) => e.stopPropagation()}>
-              <h3 className="rp-format-title">Choose Report Format</h3>
-              <div className="rp-format-options">
-                <button className="rp-format-btn" onClick={() => handleGenerateReport('pdf-native')}>
-                  <span className="rp-format-icon"><ReportFormatIcon format="document" /></span>
-                  <div><span className="rp-format-label">PDF Snapshot</span><span className="rp-format-desc">Visual 1-page net worth report saved to Reports</span></div>
-                </button>
-                <button className="rp-format-btn" onClick={() => handleGenerateReport('html')}>
-                  <span className="rp-format-icon"><ReportFormatIcon format="web" /></span>
-                  <div><span className="rp-format-label">HTML</span><span className="rp-format-desc">Rich styled report, viewable in any browser</span></div>
-                </button>
-                <button className="rp-format-btn" onClick={() => handleGenerateReport('pdf')}>
-                  <span className="rp-format-icon"><ReportFormatIcon format="print" /></span>
-                  <div><span className="rp-format-label">Print PDF</span><span className="rp-format-desc">Print-ready via browser print dialog</span></div>
-                </button>
-                <button className="rp-format-btn" onClick={() => handleGenerateReport('csv')}>
-                  <span className="rp-format-icon"><ReportFormatIcon format="table" /></span>
-                  <div><span className="rp-format-label">CSV</span><span className="rp-format-desc">Opens in Excel, Google Sheets, etc.</span></div>
-                </button>
-              </div>
-              <button className="rp-format-cancel" onClick={() => setShowReportPicker(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
+        {showReportPicker && <ReportFormatPicker onSelect={handleGenerateReport} onCancel={() => setShowReportPicker(false)} />}
 
         {/* Loading overlay */}
         {generatingReport && (

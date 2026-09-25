@@ -11,18 +11,21 @@ import {
   savingsRate,
 } from '../utils/calculations';
 import { exportSavingsCalcPdf } from '../utils/exportPdf';
-import { downloadDataUrlMobileSafe } from '../utils/downloadFile';
+import { downloadBlobMobileSafe, downloadDataUrlMobileSafe, printHtmlReport } from '../utils/downloadFile';
 import { useSavedReports } from '../hooks/useSavedReports';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { LoginModal } from '../components/LoginModal';
 import { ConfirmDialog } from '../components/calculator/ConfirmDialog';
 import { TrashIcon } from '../components/Icons';
+import { LoadingCoin } from '../components/LoadingCoin';
+import { ReportFormatIcon, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
+import { createReportHtml, escapeReportHtml } from '../utils/reportHtml';
 import { IncomeSection } from '../components/calculator/IncomeSection';
 import { ExpensesSection } from '../components/calculator/ExpensesSection';
 import { DonutChart, DonutLegend } from '../components/DonutChart';
 import { loadBudgets, saveBudget, removeBudget } from '../services/userDataService';
-import type { SavedBudget } from '../types';
+import type { CurrencyCode, SavedBudget } from '../types';
 import { generateId } from '../utils/ids';
 
 
@@ -39,6 +42,21 @@ const CHART_COLORS = [
 
 type ChartView = 'expenses' | 'flow';
 
+function savingsReportData(name: string, income: number, incomeFrequency: string, monthlyIncome: number, expenses: { name: string; amount: number; icon?: string }[], total: number, savings: number, rate: number) {
+  return { name, income, incomeFrequency, monthlyIncome, expenses, totalExpenses: total, monthlySavings: savings, annualSavings: savings * 12, savingsRate: rate };
+}
+
+function generateSavingsHTML(data: ReturnType<typeof savingsReportData>, currencyCode: CurrencyCode): string {
+  const money = (value: number) => formatCurrency(value, currencyCode);
+  const rows = data.expenses.map((expense) => `<tr><td>${escapeReportHtml(expense.name)}</td><td class="num">${money(expense.amount)}</td></tr>`).join('') || '<tr><td class="empty" colspan="2">No expenses recorded</td></tr>';
+  return createReportHtml('Savings Report', `${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} · ${data.name}`, `<div class="hero"><div class="metric-label">Monthly savings</div><div class="metric-value${data.monthlySavings < 0 ? ' negative' : ''}">${money(data.monthlySavings)}</div></div><section><h2>Income and Savings</h2><table><thead><tr><th>Item</th><th class="num">Amount</th></tr></thead><tbody><tr><td>Income (${escapeReportHtml(data.incomeFrequency)})</td><td class="num">${money(data.income)}</td></tr><tr><td>Normalised monthly income</td><td class="num">${money(data.monthlyIncome)}</td></tr><tr><td>Total expenses</td><td class="num negative">-${money(data.totalExpenses)}</td></tr><tr><td>Monthly savings</td><td class="num${data.monthlySavings < 0 ? ' negative' : ''}">${money(data.monthlySavings)}</td></tr><tr><td>Savings rate</td><td class="num">${data.savingsRate}%</td></tr></tbody></table></section><section><h2>Expense Breakdown</h2><table><thead><tr><th>Category</th><th class="num">Monthly amount</th></tr></thead><tbody>${rows}</tbody></table></section>`);
+}
+
+function generateSavingsCSV(data: ReturnType<typeof savingsReportData>): string {
+  const quote = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+  return ['Savings Report', `Generated,${new Date().toLocaleDateString('en-GB')}`, `Report name,${quote(data.name)}`, '', 'Income and Savings', 'Item,Amount', `Income (${data.incomeFrequency}),${data.income}`, `Normalised monthly income,${data.monthlyIncome}`, `Total expenses,${data.totalExpenses}`, `Monthly savings,${data.monthlySavings}`, `Savings rate,${data.savingsRate}%`, '', 'Expense Breakdown', 'Category,Monthly amount', ...data.expenses.map((expense) => `${quote(expense.name)},${expense.amount}`)].join('\n');
+}
+
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 export function CalculatorPage() {
@@ -51,6 +69,8 @@ export function CalculatorPage() {
   const { addReport } = useSavedReports();
   const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
   const [reportName, setReportName] = useState('');
+  const [showReportPicker, setShowReportPicker] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   // ── Saved budgets (localStorage + Firestore) ──
   const [budgets, setBudgets] = usePersistedState<SavedBudget[]>('vf-saved-budgets', []);
@@ -197,6 +217,26 @@ export function CalculatorPage() {
     ? formatCurrency(expTotal, currency.code)
     : formatCurrency(monthlyIncome, currency.code);
   const centerLbl = isExpenseView ? 'Total Expenses' : 'Monthly Income';
+
+  const handleGenerateReport = useCallback((format: ReportFormat) => {
+    setGeneratingReport(true);
+    setShowReportPicker(false);
+    try {
+      const name = reportName.trim() || activeBudget?.name || `Savings Report – ${new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`;
+      const report = savingsReportData(name, state.income, state.incomeFrequency, monthlyIncome, state.expenses.map((expense) => ({ name: expense.name, amount: expense.amount, icon: expense.icon })), expTotal, savings, rate);
+      const timestamp = new Date().toISOString().slice(0, 10);
+      if (format === 'html') downloadBlobMobileSafe(new Blob([generateSavingsHTML(report, currency.code)], { type: 'text/html' }), `savings-report-${timestamp}.html`);
+      else if (format === 'pdf') printHtmlReport(generateSavingsHTML(report, currency.code));
+      else if (format === 'csv') downloadBlobMobileSafe(new Blob([generateSavingsCSV(report)], { type: 'text/csv' }), `savings-report-${timestamp}.csv`);
+      else {
+        const dataUrl = exportSavingsCalcPdf(report, currency.symbol, true);
+        downloadDataUrlMobileSafe(dataUrl, `savings-report-${name.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+        addReport({ name, category: 'savings-calculator', dataUrl, summary: `${formatCurrency(savings, currency.code)}/mo savings · ${rate}% rate` });
+        setReportName('');
+      }
+    } catch (error) { console.error('Savings report generation failed', error); }
+    setGeneratingReport(false);
+  }, [activeBudget?.name, addReport, currency.code, currency.symbol, expTotal, monthlyIncome, rate, reportName, savings, state.expenses, state.income, state.incomeFrequency]);
 
   return (
     <div className="calculator-page">
@@ -367,41 +407,15 @@ export function CalculatorPage() {
             value={reportName}
             onChange={(e) => setReportName(e.target.value)}
           />
-          <button
-            className="thp-export-btn"
-            onClick={() => {
-              gate(() => {
-                const name = reportName.trim() || `Savings Report – ${new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`;
-                const pdfData = {
-                  name,
-                  income: state.income,
-                  incomeFrequency: state.incomeFrequency,
-                  monthlyIncome: monthlyIncome,
-                  expenses: state.expenses.map((e) => ({ name: e.name, amount: e.amount, icon: e.icon })),
-                  totalExpenses: expTotal,
-                  monthlySavings: savings,
-                  annualSavings: savings * 12,
-                  savingsRate: rate,
-                };
-                const dataUrl = exportSavingsCalcPdf(pdfData, currency.symbol, true);
-                downloadDataUrlMobileSafe(dataUrl, `savings-report-${name.replace(/\s+/g, '-').toLowerCase()}.pdf`);
-                addReport({
-                  name,
-                  category: 'savings-calculator',
-                  dataUrl,
-                  summary: `${formatCurrency(savings, currency.code)}/mo savings · ${rate}% rate`,
-                });
-                setReportName('');
-              });
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export &amp; Save Report
+          <button className="thp-cta" disabled={generatingReport} onClick={() => setShowReportPicker(true)}>
+            <ReportFormatIcon format="document" /> Generate Savings Report
           </button>
         </div>
       </div>
 
       {showLogin && <LoginModal onSuccess={onLoginSuccess} onClose={onLoginClose} />}
+      {showReportPicker && <ReportFormatPicker onSelect={(format) => gate(() => handleGenerateReport(format))} onCancel={() => setShowReportPicker(false)} />}
+      {generatingReport && <div className="report-overlay"><LoadingCoin text="Generating report…" /></div>}
 
       {showDeleteConfirm && (
         <ConfirmDialog

@@ -47,3 +47,24 @@ export function downloadDataUrlMobileSafe(dataUrl: string, filename: string): vo
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
 }
+
+/** Download text exports through the same Blob/Object-URL path as PDF snapshots. */
+export function downloadBlobMobileSafe(blob: Blob, filename: string): void {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+}
+
+/** Print from the generated HTML representation so Print PDF has no separate design. */
+export function printHtmlReport(html: string): void {
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+  window.setTimeout(() => win.print(), 500);
+}

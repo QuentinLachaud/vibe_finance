@@ -4,11 +4,14 @@ import { useCurrency } from '../state/CurrencyContext';
 import { useCalculator } from '../state/CalculatorContext';
 import { formatCurrency } from '../utils/currency';
 import { exportTakeHomePdf, exportHouseholdTakeHomePdf } from '../utils/exportPdf';
-import { downloadDataUrlMobileSafe } from '../utils/downloadFile';
+import { downloadBlobMobileSafe, downloadDataUrlMobileSafe, printHtmlReport } from '../utils/downloadFile';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useSavedReports } from '../hooks/useSavedReports';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { LoginModal } from '../components/LoginModal';
+import { LoadingCoin } from '../components/LoadingCoin';
+import { ReportFormatIcon, ReportFormatPicker, type ReportFormat } from '../components/ReportFormatPicker';
+import { createReportHtml, escapeReportHtml } from '../utils/reportHtml';
 import type { CurrencyCode } from '../types';
 import {
   annualiseSalary,
@@ -62,6 +65,49 @@ const THP_DEFAULTS: TakeHomePayData = {
   partner2SacrificeFixed: 0,
   lastModified: new Date().toISOString(),
 };
+
+function csvCell(value: string | number): string {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function takeHomeRows(result: TaxBreakdown, currency: CurrencyCode): string {
+  const money = (value: number) => formatCurrency(value, currency);
+  const rows = [
+    ['Gross salary', money(result.grossAnnual)],
+    ...(result.pensionSacrifice > 0 ? [['Salary sacrifice', `-${money(result.pensionSacrifice)}`]] : []),
+    ['Taxable income', money(result.taxableIncome)],
+    ['Income tax', `-${money(result.incomeTax)}`],
+    ['National Insurance', `-${money(result.nationalInsurance)}`],
+    ['Net annual pay', money(result.netAnnual)],
+    ['Net monthly pay', money(result.netMonthly)],
+  ];
+  return rows.map(([label, value]) => `<tr><td>${escapeReportHtml(label)}</td><td class="num${String(value).startsWith('-') ? ' negative' : ''}">${escapeReportHtml(String(value))}</td></tr>`).join('');
+}
+
+function taxBandRows(result: TaxBreakdown, currency: CurrencyCode, bands: 'taxBands' | 'niBands'): string {
+  return result[bands].map((band) => `<tr><td>${escapeReportHtml(band.name)}</td><td>${escapeReportHtml(band.rate)}</td><td class="num">${formatCurrency(band.amount, currency)}</td></tr>`).join('');
+}
+
+function generateTakeHomeHTML(data: TakeHomePayData, result: TaxBreakdown, result2: TaxBreakdown | null, currency: CurrencyCode): string {
+  const household = data.householdMode && result2;
+  const monthly = household ? result.netMonthly + result2.netMonthly : result.netMonthly;
+  const title = household ? 'Household Take Home Pay Report' : 'Take Home Pay Report';
+  const people = household ? [[data.partner1Name, data.region, result], [data.partner2Name, data.partner2Region, result2]] as const : [['Your pay', data.region, result]] as const;
+  const summaries = people.map(([name, region, person]) => `<section><h2>${escapeReportHtml(name)} · ${region === 'scotland' ? 'Scotland' : 'England / Wales / NI'}</h2><table><thead><tr><th>Item</th><th class="num">Annual / monthly amount</th></tr></thead><tbody>${takeHomeRows(person, currency)}</tbody></table></section><section><h2>${escapeReportHtml(name)} · Income Tax</h2><table><thead><tr><th>Band</th><th>Rate</th><th class="num">Tax</th></tr></thead><tbody>${taxBandRows(person, currency, 'taxBands')}</tbody></table></section><section><h2>${escapeReportHtml(name)} · National Insurance</h2><table><thead><tr><th>Band</th><th>Rate</th><th class="num">NI</th></tr></thead><tbody>${taxBandRows(person, currency, 'niBands')}</tbody></table></section>`).join('');
+  return createReportHtml(title, `${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} · UK Tax Year 2025-26`, `<div class="hero"><div class="metric-label">${household ? 'Combined monthly take home pay' : 'Monthly take home pay'}</div><div class="metric-value">${formatCurrency(monthly, currency)}</div></div>${summaries}`);
+}
+
+function generateTakeHomeCSV(data: TakeHomePayData, result: TaxBreakdown, result2: TaxBreakdown | null): string {
+  const people = data.householdMode && result2 ? [[data.partner1Name, data.region, result], [data.partner2Name, data.partner2Region, result2]] as const : [['Your pay', data.region, result]] as const;
+  const lines = ['Take Home Pay Report', `Generated,${new Date().toLocaleDateString('en-GB')}`, ''];
+  people.forEach(([name, region, person]) => {
+    lines.push(`${name} (${region === 'scotland' ? 'Scotland' : 'England / Wales / NI'})`, 'Item,Amount');
+    [['Gross salary', person.grossAnnual], ['Salary sacrifice', person.pensionSacrifice], ['Taxable income', person.taxableIncome], ['Income tax', -person.incomeTax], ['National Insurance', -person.nationalInsurance], ['Net annual pay', person.netAnnual], ['Net monthly pay', person.netMonthly]].forEach(([label, value]) => lines.push(`${csvCell(label)},${value}`));
+    lines.push('', 'Income Tax Bands', 'Band,Rate,Amount'); person.taxBands.forEach((band) => lines.push(`${csvCell(band.name)},${csvCell(band.rate)},${band.amount}`));
+    lines.push('', 'National Insurance Bands', 'Band,Rate,Amount'); person.niBands.forEach((band) => lines.push(`${csvCell(band.name)},${csvCell(band.rate)},${band.amount}`)); lines.push('');
+  });
+  return lines.join('\n');
+}
 
 // ══════════════════════════════════════════════
 //  Inline editable name
@@ -366,6 +412,8 @@ export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = 
   const didApplySearchParams = useRef(false);
   const { gate, showLogin, onLoginSuccess, onLoginClose } = useAuthGate();
   const { addReport } = useSavedReports();
+  const [showReportPicker, setShowReportPicker] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   const updateField = useCallback(<K extends keyof TakeHomePayData>(key: K, value: TakeHomePayData[K]) => {
     setData((prev) => ({ ...THP_DEFAULTS, ...prev, [key]: value, lastModified: new Date().toISOString() }));
@@ -439,6 +487,28 @@ export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = 
     navigate('/calculator');
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   };
+
+  const handleGenerateReport = useCallback((format: ReportFormat) => {
+    setGeneratingReport(true);
+    setShowReportPicker(false);
+    try {
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const household = data.householdMode && result2;
+      const reportName = household ? `Household Take Home – ${data.partner1Name} & ${data.partner2Name}` : `Take Home Pay – ${formatCurrency(result.grossAnnual, currency.code)}/yr`;
+      const html = generateTakeHomeHTML(data, result, result2, currency.code);
+      if (format === 'html') downloadBlobMobileSafe(new Blob([html], { type: 'text/html' }), `take-home-pay-report-${timestamp}.html`);
+      else if (format === 'pdf') printHtmlReport(html);
+      else if (format === 'csv') downloadBlobMobileSafe(new Blob([generateTakeHomeCSV(data, result, result2)], { type: 'text/csv' }), `take-home-pay-report-${timestamp}.csv`);
+      else {
+        const dataUrl = household && result2
+          ? exportHouseholdTakeHomePdf(result, result2, data.partner1Name, data.partner2Name, data.region, data.partner2Region, currency.symbol, true)
+          : exportTakeHomePdf(result, data.region, currency.symbol, true);
+        downloadDataUrlMobileSafe(dataUrl, `${household ? 'household-' : ''}take-home-pay-report-${timestamp}.pdf`);
+        addReport({ name: reportName, category: 'take-home-pay', dataUrl, summary: household ? `Combined: ${formatCurrency(result.netMonthly + result2!.netMonthly, currency.code)}/mo` : `Net: ${formatCurrency(result.netMonthly, currency.code)}/mo · ${data.region}` });
+      }
+    } catch (error) { console.error('Take home report generation failed', error); }
+    setGeneratingReport(false);
+  }, [addReport, currency.code, currency.symbol, data, result, result2]);
 
   return (
     <div className="page-container">
@@ -666,40 +736,18 @@ export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = 
                  See how much you can save →
               </button>
               <button
-                className="thp-export-btn"
-                onClick={() => {
-                  if (data.householdMode && result2) {
-                    gate(() => {
-                      const dataUrl = exportHouseholdTakeHomePdf(result, result2, data.partner1Name, data.partner2Name, data.region, data.partner2Region, currency.symbol, true);
-                      downloadDataUrlMobileSafe(dataUrl, 'household-take-home-pay-report.pdf');
-                      addReport({
-                        name: `Household Take Home – ${data.partner1Name} & ${data.partner2Name}`,
-                        category: 'take-home-pay',
-                        dataUrl,
-                        summary: `Combined: ${formatCurrency(result.netMonthly + result2.netMonthly, currency.code)}/mo`,
-                      });
-                    });
-                  } else {
-                    gate(() => {
-                      const dataUrl = exportTakeHomePdf(result, data.region, currency.symbol, true);
-                      downloadDataUrlMobileSafe(dataUrl, 'take-home-pay-report.pdf');
-                      addReport({
-                        name: `Take Home Pay – ${formatCurrency(result.grossAnnual, currency.code)}/yr`,
-                        category: 'take-home-pay',
-                        dataUrl,
-                        summary: `Net: ${formatCurrency(result.netMonthly, currency.code)}/mo · ${data.region}`,
-                      });
-                    });
-                  }
-                }}
+                className="thp-cta"
+                disabled={generatingReport}
+                onClick={() => setShowReportPicker(true)}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Export PDF Report
+                <ReportFormatIcon format="document" /> Generate {data.householdMode ? 'Household Take Home' : 'Take Home'} Report
               </button>
             </div>
           </div>
         </div>
       </div>
+      {showReportPicker && <ReportFormatPicker onSelect={(format) => gate(() => handleGenerateReport(format))} onCancel={() => setShowReportPicker(false)} />}
+      {generatingReport && <div className="report-overlay"><LoadingCoin text="Generating report…" /></div>}
     </div>
   );
 }
