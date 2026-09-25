@@ -169,4 +169,21 @@ describe('professional mobile UX contracts', () => {
     expect(monteCarlo).toContain('fontSize="var(--type-chart-tick)"');
   });
 
+  it('keeps portfolio timeline metadata outside proportional tracks', () => {
+    const timeline = read('src/components/portfolio/TimelineView.tsx');
+    const css = read('src/App.css');
+
+    expect(timeline).toContain('className="ps-tl-meta"');
+    expect(timeline).toContain('className="ps-tl-track"');
+    expect(timeline).toContain('ps-tl-marker');
+    expect(timeline).toContain('ps-tl-range');
+    expect(timeline).not.toContain('ps-tl-bar-label');
+    expect(timeline).not.toContain('ps-tl-bar-amount');
+    expect(timeline).not.toContain('Math.max(5, rawWidth)');
+    expect(css).toContain('.ps-tl-axis-label--start');
+    expect(css).toContain('.ps-tl-axis-label--end');
+    expect(css).toMatch(/\.ps-tl-meta\s*\{[^}]*justify-content:\s*space-between/s);
+  });
+
+
 });
