@@ -80,6 +80,13 @@ function isDebtType(type: string): boolean {
 
 type SortMode = 'type' | 'class' | 'value';
 
+function ReportFormatIcon({ format }: { format: 'document' | 'web' | 'print' | 'table' }) {
+  const paths = format === 'web' ? <><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 9v11"/></>
+    : format === 'table' ? <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></>
+      : <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></>;
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{paths}</svg>;
+}
+
 const ASSET_COLORS = [
   '#22d3ee', '#8b5cf6', '#10b981', '#f59e0b',
   '#3b82f6', '#ec4899', '#ef4444', '#06b6d4',
@@ -1465,7 +1472,7 @@ export function NetWorthPage() {
               disabled={generatingReport}
               onClick={() => setShowReportPicker(true)}
             >
-              📄 Generate Net Worth Report
+              <ReportFormatIcon format="document" /> Generate Net Worth Report
             </button>
           </div>
         )}
@@ -1477,19 +1484,19 @@ export function NetWorthPage() {
               <h3 className="rp-format-title">Choose Report Format</h3>
               <div className="rp-format-options">
                 <button className="rp-format-btn" onClick={() => handleGenerateReport('pdf-native')}>
-                  <span className="rp-format-icon">📄</span>
+                  <span className="rp-format-icon"><ReportFormatIcon format="document" /></span>
                   <div><span className="rp-format-label">PDF Snapshot</span><span className="rp-format-desc">Visual 1-page net worth report saved to Reports</span></div>
                 </button>
                 <button className="rp-format-btn" onClick={() => handleGenerateReport('html')}>
-                  <span className="rp-format-icon">🌐</span>
+                  <span className="rp-format-icon"><ReportFormatIcon format="web" /></span>
                   <div><span className="rp-format-label">HTML</span><span className="rp-format-desc">Rich styled report, viewable in any browser</span></div>
                 </button>
                 <button className="rp-format-btn" onClick={() => handleGenerateReport('pdf')}>
-                  <span className="rp-format-icon">🖨️</span>
+                  <span className="rp-format-icon"><ReportFormatIcon format="print" /></span>
                   <div><span className="rp-format-label">Print PDF</span><span className="rp-format-desc">Print-ready via browser print dialog</span></div>
                 </button>
                 <button className="rp-format-btn" onClick={() => handleGenerateReport('csv')}>
-                  <span className="rp-format-icon">📊</span>
+                  <span className="rp-format-icon"><ReportFormatIcon format="table" /></span>
                   <div><span className="rp-format-label">CSV</span><span className="rp-format-desc">Opens in Excel, Google Sheets, etc.</span></div>
                 </button>
               </div>

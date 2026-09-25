@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../state/AuthContext';
 
 interface LoginModalProps {
@@ -37,6 +37,16 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    emailRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const handleSuccess = () => {
     if (onSuccess) onSuccess();
@@ -76,8 +86,8 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
 
   return (
     <div className="login-overlay" onClick={onClose}>
-      <div className="login-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="login-title">
+      <div className="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="login-modal-title" className="login-title">
           {mode === 'login' ? 'Welcome back' : 'Create your account'}
         </h2>
         <p className="login-subtitle">
@@ -107,6 +117,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             />
           )}
           <input
+            ref={emailRef}
             type="email"
             className="login-input"
             placeholder="Email address"

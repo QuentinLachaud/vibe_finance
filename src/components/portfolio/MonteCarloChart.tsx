@@ -249,7 +249,7 @@ export function MonteCarloChart({ data, result, currencyCode }: MonteCarloChartP
               {result.survivalRate.toFixed(0)}% survive
             </span>
             <button className="ps-flip-btn" onClick={() => setFlipped(true)} title="Show outcome distribution">
-              📊 Distribution
+              Distribution
             </button>
           </div>
         </div>

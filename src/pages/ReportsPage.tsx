@@ -24,6 +24,16 @@ interface ScenarioReport {
 
 type ReportFormat = 'html' | 'csv' | 'pdf';
 
+function ReportFormatIcon({ format }: { format: ReportFormat }) {
+  if (format === 'csv') {
+    return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>;
+  }
+  if (format === 'html') {
+    return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 5l-4 14"/></svg>;
+  }
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>;
+}
+
 // ── Constants (defaults — overridden by persisted user settings) ──
 
 const DEFAULT_NUM_PATHS = 500;
@@ -599,28 +609,32 @@ function formatReportDate(iso: string): string {
     ' · ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
-const CATEGORY_META: Record<ReportCategory, { label: string; icon: string; emptyText: string }> = {
+const CATEGORY_META: Record<ReportCategory, { label: string; emptyText: string }> = {
   'take-home-pay': {
     label: 'Take Home Pay',
-    icon: '💰',
     emptyText: 'No take-home pay reports yet. Generate one from the Take Home Pay page.',
   },
   'savings-calculator': {
     label: 'Savings Calculator',
-    icon: '🧮',
     emptyText: 'No savings reports yet. Export one from the Savings Calculator.',
   },
   'portfolio-simulation': {
     label: 'Portfolio Simulation',
-    icon: '📈',
     emptyText: 'No portfolio reports yet. Select scenarios below to generate.',
   },
   'net-worth': {
     label: 'Net Worth',
-    icon: '📊',
     emptyText: 'No net worth reports yet. Export one from the Net Worth page.',
   },
 };
+
+function CategoryIcon({ category }: { category: ReportCategory }) {
+  const path = category === 'portfolio-simulation' ? <path d="M4 16 9 11l4 3 7-8M15 6h5v5" />
+    : category === 'savings-calculator' ? <path d="M12 3v18M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      : category === 'net-worth' ? <><path d="M5 20V10M12 20V4M19 20v-7" /></>
+        : <><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 14h4"/></>;
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{path}</svg>;
+}
 
 // ── Download helpers ──
 
@@ -789,7 +803,7 @@ export function ReportsPage() {
     return (
       <div className="rp-section" key={category}>
         <div className="rp-section-header">
-          <span className="rp-section-icon">{meta.icon}</span>
+          <span className="rp-section-icon"><CategoryIcon category={category} /></span>
           <h2 className="rp-section-title">{meta.label}</h2>
           <span className="rp-section-count">{reports.length} report{reports.length !== 1 ? 's' : ''}</span>
         </div>
@@ -876,7 +890,7 @@ export function ReportsPage() {
         {/* ═══ Portfolio Simulation ═══ */}
         <div className="rp-section">
           <div className="rp-section-header">
-            <span className="rp-section-icon">{CATEGORY_META['portfolio-simulation'].icon}</span>
+            <span className="rp-section-icon"><CategoryIcon category="portfolio-simulation" /></span>
             <h2 className="rp-section-title">{CATEGORY_META['portfolio-simulation'].label}</h2>
             <span className="rp-section-count">{scenarios.length} scenario{scenarios.length !== 1 ? 's' : ''}</span>
           </div>
@@ -955,15 +969,15 @@ export function ReportsPage() {
               <h3 className="rp-format-title">Choose Report Format</h3>
               <div className="rp-format-options">
                 <button className="rp-format-btn" onClick={() => runReportsForSelected('html')}>
-                  <span className="rp-format-icon">🌐</span>
+                  <span className="rp-format-icon"><ReportFormatIcon format="html" /></span>
                   <div><span className="rp-format-label">HTML</span><span className="rp-format-desc">Rich styled report, viewable in any browser</span></div>
                 </button>
                 <button className="rp-format-btn" onClick={() => runReportsForSelected('pdf')}>
-                  <span className="rp-format-icon">📄</span>
+                  <span className="rp-format-icon"><ReportFormatIcon format="pdf" /></span>
                   <div><span className="rp-format-label">PDF</span><span className="rp-format-desc">Print-ready via browser print dialog</span></div>
                 </button>
                 <button className="rp-format-btn" onClick={() => runReportsForSelected('csv')}>
-                  <span className="rp-format-icon">📊</span>
+                  <span className="rp-format-icon"><ReportFormatIcon format="csv" /></span>
                   <div><span className="rp-format-label">CSV</span><span className="rp-format-desc">Opens in Excel, Google Sheets, etc.</span></div>
                 </button>
               </div>
@@ -979,7 +993,7 @@ export function ReportsPage() {
               <h3 className="rp-format-title">Choose Report Format</h3>
               <div className="rp-format-options">
                 <button className="rp-format-btn" onClick={() => downloadSavedReportAs('pdf')}>
-                  <span className="rp-format-icon">📄</span>
+                  <span className="rp-format-icon"><ReportFormatIcon format="pdf" /></span>
                   <div><span className="rp-format-label">PDF Snapshot</span><span className="rp-format-desc">Download the saved report PDF</span></div>
                 </button>
               </div>

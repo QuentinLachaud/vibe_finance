@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
-import { LoginModal } from '../components/LoginModal';
 import { buildSalaryPath, POPULAR_SALARY_AMOUNTS } from '../utils/salaryLanding';
 
 // ── SVG icons (thin line, no emojis) ──
@@ -90,45 +89,21 @@ const FEATURES: { icon: ReactNode; title: string; desc: string; path: string }[]
   },
 ];
 
-// ── Feature card with staggered entrance ──
-
 function FeatureCard({
   icon,
   title,
   desc,
   path,
-  index,
 }: {
   icon: ReactNode;
   title: string;
   desc: string;
   path: string;
-  index: number;
 }) {
-  const ref = useRef<HTMLAnchorElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.15 },
-    );
-    observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <Link
-      ref={ref}
       to={path}
-      className={`landing-feature-card ${visible ? 'landing-feature-card--visible' : ''}`}
-      style={{ transitionDelay: `${index * 80}ms` }}
+      className="landing-feature-card"
     >
       <span className="landing-feature-icon">{icon}</span>
       <h3 className="landing-feature-title">{title}</h3>
@@ -150,14 +125,6 @@ export function LandingPage() {
   useDocumentTitle('TakeHomeCalc - Your Personal Finance Dashboard');
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [showLogin, setShowLogin] = useState(false);
-  const [heroVisible, setHeroVisible] = useState(false);
-
-  // Trigger hero entrance
-  useEffect(() => {
-    const t = setTimeout(() => setHeroVisible(true), 80);
-    return () => clearTimeout(t);
-  }, []);
 
   const isLoggedIn = !loading && !!user;
 
@@ -165,7 +132,7 @@ export function LandingPage() {
   if (isLoggedIn) {
     return (
       <div className="landing-page landing-page--authed">
-        <section className={`landing-tools-header ${heroVisible ? 'landing-tools-header--visible' : ''}`}>
+        <section className="landing-tools-header">
           <h1 className="landing-tools-greeting">
             Welcome back{user.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}.
           </h1>
@@ -174,8 +141,8 @@ export function LandingPage() {
 
         <section className="landing-features landing-features--authed">
           <div className="landing-features-grid">
-            {FEATURES.map((f, i) => (
-              <FeatureCard key={f.path} {...f} index={i} />
+            {FEATURES.map((f) => (
+              <FeatureCard key={f.path} {...f} />
             ))}
           </div>
         </section>
@@ -207,8 +174,7 @@ export function LandingPage() {
   return (
     <div className="landing-page">
       {/* ── Hero ── */}
-      <section className={`landing-hero ${heroVisible ? 'landing-hero--visible' : ''}`}>
-        <div className="landing-hero-glow" />
+      <section className="landing-hero">
         <h1 className="landing-hero-title">
           Understand your money,
           <br />
@@ -218,43 +184,13 @@ export function LandingPage() {
           TakeHomeCalc helps you with what you take home,
           how much you save, how your investments can grow, and where you are headed.
         </p>
-        <p className="landing-hero-note">
-          Plan for the future you want
-        </p>
-
         <div className="landing-hero-actions">
           <button
             className="landing-cta-primary"
-            onClick={() => setShowLogin(true)}
+            onClick={() => navigate('/take-home-pay')}
           >
-            Sign in and save your data
+            Calculate take-home pay
           </button>
-          <button
-            className="landing-cta-secondary"
-            onClick={() =>
-              document
-                .getElementById('landing-tools-grid')
-                ?.scrollIntoView({ behavior: 'smooth' })
-            }
-          >
-            Try the tools now
-          </button>
-        </div>
-      </section>
-
-      {/* ── Stats ribbon ── */}
-      <section className="landing-stats">
-        <div className="landing-stat">
-          <span className="landing-stat-number">6</span>
-          <span className="landing-stat-label">Core planning tools</span>
-        </div>
-        <div className="landing-stat">
-          <span className="landing-stat-number">Tax + NI</span>
-          <span className="landing-stat-label">Included in pay estimates</span>
-        </div>
-        <div className="landing-stat">
-          <span className="landing-stat-number">PDF</span>
-          <span className="landing-stat-label">Reports when you need them</span>
         </div>
       </section>
 
@@ -265,8 +201,8 @@ export function LandingPage() {
           Pick a tool based on the question you need to answer right now.
         </p>
         <div className="landing-features-grid">
-          {FEATURES.map((f, i) => (
-            <FeatureCard key={f.path} {...f} index={i} />
+          {FEATURES.map((f) => (
+            <FeatureCard key={f.path} {...f} />
           ))}
         </div>
       </section>
@@ -287,20 +223,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA bottom ── */}
-      <section className="landing-bottom-cta">
-        <h2 className="landing-bottom-title">Start with one question</h2>
-        <p className="landing-bottom-subtitle">
-          Start with take-home pay or savings, then build a full plan from there.
-        </p>
-        <button
-          className="landing-cta-primary"
-          onClick={() => setShowLogin(true)}
-        >
-          Sign in and keep your progress
-        </button>
-      </section>
-
       {/* ── Footer ── */}
       <footer className="landing-footer">
         <span>TakeHomeCalc.co.uk</span>
@@ -308,15 +230,6 @@ export function LandingPage() {
         <span>Built in the UK</span>
       </footer>
 
-      {showLogin && (
-        <LoginModal
-          onClose={() => setShowLogin(false)}
-          onSuccess={() => {
-            setShowLogin(false);
-            navigate('/calculator');
-          }}
-        />
-      )}
     </div>
   );
 }

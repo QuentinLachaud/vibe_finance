@@ -492,25 +492,6 @@ export function CompoundInterestPage() {
               />
             </div>
 
-            {/* Increase Annual Amount */}
-            <div className="ci-field">
-              <label className="ci-label">
-                {isWithdrawal ? 'Annual Withdrawal Increase' : 'Annual Deposit Increase'}
-              </label>
-              <div className="ci-segment-group">
-                {DEPOSIT_INCREASE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    className={`ci-segment-btn ${annualDepositIncrease === opt ? 'ci-segment-btn--active' : ''}`}
-                    onClick={() => setAnnualDepositIncrease(opt)}
-                    aria-label={`${opt}% annual ${isWithdrawal ? 'withdrawal' : 'deposit'} increase`}
-                  >
-                    {opt}%
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Years */}
             <div className="ci-field">
               <label className="ci-label">Investment Period</label>
@@ -523,6 +504,27 @@ export function CompoundInterestPage() {
                 max={100}
               />
             </div>
+
+            <details className="ci-advanced-options">
+              <summary>Advanced assumptions</summary>
+              <div className="ci-field">
+                <label className="ci-label">
+                  {isWithdrawal ? 'Annual Withdrawal Increase' : 'Annual Deposit Increase'}
+                </label>
+                <div className="ci-segment-group">
+                  {DEPOSIT_INCREASE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      className={`ci-segment-btn ${annualDepositIncrease === opt ? 'ci-segment-btn--active' : ''}`}
+                      onClick={() => setAnnualDepositIncrease(opt)}
+                      aria-label={`${opt}% annual ${isWithdrawal ? 'withdrawal' : 'deposit'} increase`}
+                    >
+                      {opt}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </details>
 
             {/* Calculate Button */}
             <button
@@ -552,36 +554,19 @@ export function CompoundInterestPage() {
                   />
                 </div>
                 <div className="ci-result-item">
-                  <span className="ci-result-label">Total Interest Earned</span>
+                  <span className="ci-result-label">{isWithdrawal ? 'Total Withdrawn' : 'Contributions'}</span>
                   <AnimatedValue
-                    value={formatCurrency(result.totalInterest, currency.code)}
+                    value={formatCurrency(isWithdrawal ? result.totalWithdrawals : result.totalDeposits, currency.code)}
                     className="ci-result-value--yellow"
                   />
                 </div>
                 <div className="ci-result-item">
-                  <span className="ci-result-label">Initial Balance</span>
+                  <span className="ci-result-label">Growth</span>
                   <AnimatedValue
-                    value={formatCurrency(initialInvestment, currency.code)}
+                    value={formatCurrency(result.totalInterest, currency.code)}
                     className="ci-result-value--blue"
                   />
                 </div>
-                {isWithdrawal ? (
-                  <div className="ci-result-item">
-                    <span className="ci-result-label">Total Withdrawn</span>
-                    <AnimatedValue
-                      value={formatCurrency(result.totalWithdrawals, currency.code)}
-                      className="ci-result-value--red"
-                    />
-                  </div>
-                ) : (
-                  <div className="ci-result-item">
-                    <span className="ci-result-label">Additional Deposits</span>
-                    <AnimatedValue
-                      value={formatCurrency(result.totalDeposits - result.initialInvestment, currency.code)}
-                      className="ci-result-value--purple"
-                    />
-                  </div>
-                )}
               </div>
             </div>
           )}

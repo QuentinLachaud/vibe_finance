@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ContactModalProps {
   onClose: () => void;
@@ -10,6 +10,16 @@ export function ContactModal({ onClose }: ContactModalProps) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const messageRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    messageRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +52,11 @@ export function ContactModal({ onClose }: ContactModalProps) {
 
   return (
     <div className="login-overlay" onClick={onClose}>
-      <div className="login-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440, textAlign: 'left' }}>
+      <div className="login-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440, textAlign: 'left' }}>
         {sent ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
-            <h2 style={{ color: 'var(--text-primary)', marginBottom: 8, fontSize: 20 }}>Message sent!</h2>
+            <h2 id="contact-modal-title" style={{ color: 'var(--text-primary)', marginBottom: 8, fontSize: 20 }}>Message sent!</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
               Thanks for reaching out. I'll get back to you as soon as I can.
             </p>
@@ -60,7 +70,7 @@ export function ContactModal({ onClose }: ContactModalProps) {
           </div>
         ) : (
           <>
-            <h2 style={{ color: 'var(--text-primary)', marginBottom: 6, fontSize: 20, textAlign: 'center' }}>
+            <h2 id="contact-modal-title" style={{ color: 'var(--text-primary)', marginBottom: 6, fontSize: 20, textAlign: 'center' }}>
               Contact the Developer
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24, textAlign: 'center', lineHeight: 1.5 }}>
@@ -95,6 +105,7 @@ export function ContactModal({ onClose }: ContactModalProps) {
                   Your message
                 </label>
                 <textarea
+                  ref={messageRef}
                   id="contact-message"
                   placeholder="What's on your mind?"
                   value={message}

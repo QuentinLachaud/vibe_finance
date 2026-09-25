@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ConfirmDialogProps {
   message: string;
@@ -7,12 +7,23 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ message, onConfirm, onCancel }: ConfirmDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onCancel]);
+
   return (
     <div className="confirm-overlay" onClick={onCancel}>
-      <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label="Confirm removal" onClick={(e) => e.stopPropagation()}>
         <p className="confirm-message">{message}</p>
         <div className="confirm-actions">
-          <button className="confirm-btn confirm-btn--cancel" onClick={onCancel}>
+          <button ref={cancelRef} className="confirm-btn confirm-btn--cancel" onClick={onCancel}>
             Cancel
           </button>
           <button className="confirm-btn confirm-btn--remove" onClick={onConfirm}>

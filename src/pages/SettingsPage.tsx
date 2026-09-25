@@ -229,14 +229,6 @@ export function SettingsPage() {
         </section>
 
         <section className="settings-card">
-          <h2 className="settings-card-title">Advanced Simulation</h2>
-          <div className="settings-field">
-            <label className="settings-label">Simulation Paths</label>
-            <p className="settings-note">Simulation paths are fixed at 500 for performance.</p>
-          </div>
-        </section>
-
-        <section className="settings-card">
           <h2 className="settings-card-title">Data</h2>
           <div className="settings-actions">
             <button className="settings-btn settings-btn--secondary" onClick={exportPreferences}>

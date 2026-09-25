@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../state/ThemeContext';
 import { useCurrency } from '../state/CurrencyContext';
@@ -43,19 +43,8 @@ export function Header() {
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const mobileNavRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-
-  // Derive current page label for mobile dropdown trigger
-  const currentPageLabel = useMemo(() => {
-    const match = NAV_ITEMS.find((item) => {
-      if (item.path === '/') return location.pathname === '/';
-      return location.pathname.startsWith(item.path);
-    });
-    return match?.label || 'Menu';
-  }, [location.pathname]);
 
   // Close user menu on click outside
   useEffect(() => {
@@ -69,40 +58,6 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showMenu]);
 
-  // Close mobile nav on route change
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [location.pathname]);
-
-  // Close mobile nav on click outside
-  useEffect(() => {
-    if (!mobileNavOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        mobileNavRef.current &&
-        !mobileNavRef.current.contains(e.target as Node)
-      ) {
-        setMobileNavOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [mobileNavOpen]);
-
-  // Lock body scroll when mobile nav is open
-  useEffect(() => {
-    if (mobileNavOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [mobileNavOpen]);
-
-  const toggleMobileNav = useCallback(() => {
-    setMobileNavOpen((v) => !v);
-  }, []);
-
   const isHomePage = location.pathname === '/';
 
   return (
@@ -113,29 +68,6 @@ export function Header() {
           <span className="logo-text logo-text--full">TakeHomeCalc<span className="logo-tld">.co.uk</span></span>
           {!isHomePage && <span className="logo-text logo-text--short">Home</span>}
         </Link>
-
-        {/* Mobile page dropdown trigger (mobile only) */}
-        <button
-          className="mobile-page-trigger"
-          onClick={toggleMobileNav}
-          aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}
-          aria-expanded={mobileNavOpen}
-        >
-          <span className="mobile-page-trigger__label">{currentPageLabel}</span>
-          <svg
-            className={`mobile-page-trigger__chevron ${mobileNavOpen ? 'mobile-page-trigger__chevron--open' : ''}`}
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
 
         {/* Desktop Navigation */}
         <nav className="header-nav header-nav--desktop">
@@ -229,30 +161,6 @@ export function Header() {
             )
           )}
         </div>
-      </div>
-
-      {/* Mobile Navigation Dropdown */}
-      {mobileNavOpen && (
-        <div className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} />
-      )}
-      <div
-        ref={mobileNavRef}
-        className={`mobile-nav-dropdown ${mobileNavOpen ? 'mobile-nav-dropdown--open' : ''}`}
-      >
-        <nav className="mobile-nav-list">
-          {NAV_ITEMS.filter((item) => !item.isSettings).map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `mobile-nav-link ${isActive ? 'mobile-nav-link--active' : ''}${item.isGold ? ' mobile-nav-link--gold' : ''}`
-              }
-              onClick={() => setMobileNavOpen(false)}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
       </div>
 
       {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}

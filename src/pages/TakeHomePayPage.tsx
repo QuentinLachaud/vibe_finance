@@ -139,25 +139,6 @@ function PartnerInputFields({
 }: PartnerInputProps) {
   return (
     <>
-      {/* Region toggle */}
-      <div className="thp-row">
-        <label className="thp-label">Tax Region</label>
-        <div className="thp-region-toggle">
-          <button
-            className={`thp-region-btn ${region === 'england' ? 'thp-region-btn--active' : ''}`}
-            onClick={() => onRegionChange('england')}
-          >
-            🏴󠁧󠁢󠁥󠁮󠁧󠁿 England
-          </button>
-          <button
-            className={`thp-region-btn ${region === 'scotland' ? 'thp-region-btn--active' : ''}`}
-            onClick={() => onRegionChange('scotland')}
-          >
-            🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland
-          </button>
-        </div>
-      </div>
-
       {/* Salary input */}
       <div className="thp-row">
         <label className="thp-label">Salary</label>
@@ -186,6 +167,25 @@ function PartnerInputFields({
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Region stays secondary to salary, but is always visible. */}
+      <div className="thp-row thp-row--region">
+        <label className="thp-label">Tax region</label>
+        <div className="thp-region-toggle">
+          <button
+            className={`thp-region-btn ${region === 'england' ? 'thp-region-btn--active' : ''}`}
+            onClick={() => onRegionChange('england')}
+          >
+            England
+          </button>
+          <button
+            className={`thp-region-btn ${region === 'scotland' ? 'thp-region-btn--active' : ''}`}
+            onClick={() => onRegionChange('scotland')}
+          >
+            Scotland
+          </button>
         </div>
       </div>
 
@@ -462,13 +462,13 @@ export function TakeHomePayPage({ initialSalary }: { initialSalary?: number } = 
                 className={`thp-mode-btn ${!data.householdMode ? 'thp-mode-btn--active' : ''}`}
                 onClick={() => updateField('householdMode', false)}
               >
-                <span className="thp-mode-icon">👤</span> Individual
+                Individual
               </button>
               <button
                 className={`thp-mode-btn ${data.householdMode ? 'thp-mode-btn--active' : ''}`}
                 onClick={() => updateField('householdMode', true)}
               >
-                <span className="thp-mode-icon">👥</span> Household
+                Household
               </button>
             </div>
           </div>

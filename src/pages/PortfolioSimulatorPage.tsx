@@ -805,7 +805,7 @@ export function PortfolioSimulatorPage() {
           {/* ── Scenario Manager ── */}
           <div className="ps-card ps-scn-card">
             <div className="ps-scn-header">
-              <h2 className="ps-card-title">📋 Scenario</h2>
+              <h2 className="ps-card-title">Scenario</h2>
               {activeScenario && !isDirty && (
                 <span className="ps-scn-badge ps-scn-badge--saved">Saved</span>
               )}
@@ -940,7 +940,7 @@ export function PortfolioSimulatorPage() {
                 className="ps-login-prompt"
                 onClick={() => gate(() => {})}
               >
-                🔒 Sign in to save scenarios to your account
+                Sign in to save scenarios to your account
               </button>
             )}
 
@@ -950,7 +950,7 @@ export function PortfolioSimulatorPage() {
                 className="ps-btn ps-btn--gold ps-generate-report-cta"
                 onClick={() => navigate('/reports')}
               >
-                📊 Generate Report
+                Generate report
               </button>
             )}
           </div>
